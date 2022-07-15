@@ -1,4 +1,5 @@
 import { Assets } from "./assets.js";
+import { Consts } from "./consts.js";
 
 /**
  * Random number: min <= n < max;
@@ -10,44 +11,62 @@ export function randint(min: number, max: number): number {
 }
 
 const wordSplitter = /(\n)|\s+/;
-const fontCanvas = (() => {
-    let canvas = document.createElement("canvas");
-    canvas.width = 48;
-    canvas.height = 40;
 
-    return canvas;
-})();
-const fontCanvasCtx = fontCanvas.getContext("2d")!;
-export function drawString(s: string, x: number, y: number, color: string, charsWidth: number, ctx: CanvasRenderingContext2D) {
-    fontCanvasCtx.fillStyle = color;
-    fontCanvasCtx.fillRect(0, 0, 48, 40);
-    fontCanvasCtx.globalCompositeOperation = "destination-in";
-    fontCanvasCtx.drawImage(Assets.textures.font, 0, 0);
-    fontCanvasCtx.globalCompositeOperation = "source-over";
-
-    let cursor = 0;
-    let line = 0;
+export function splitIntoWordsWithLen(s: string, charsWidth: number): string[] {
     let words = s.split(wordSplitter);
-
+    let line = [];
+    let out = [];
+    let cursor = 0;
     for (let word of words) {
         if (word === undefined) continue;
         if (word === "\n") {
             cursor = 0;
-            line++;
+            out.push(line.join(" "));
+            line = [];
         } else {
             if (cursor + word.length >= charsWidth) {
                 cursor = 0;
-                line++;
+                out.push(line.join(" "));
+                line = [];
             }
-            for (let i = 0; i < word.length; i++) {
-                let cp = word.codePointAt(i)!;
-                let sx = cp % 16;
-                let sy = Math.floor(cp / 16);
+            line.push(word);
+            cursor += word.length + 1; // for the space
+        }
+    }
+    if (line.length !== 0) {
+        out.push(line.join(" "));
+    }
+    return out;
+}
 
-                ctx.drawImage(fontCanvas, sx * 3, sy * 5, 3, 5, x + cursor * 4, y + line * 6, 3, 5);
+const fontCanvas = (() => {
+    let canvas = document.createElement("canvas");
+    canvas.width = 16 * Consts.CHAR_WIDTH;
+    canvas.height = 16 * Consts.CHAR_HEIGHT;
 
-                cursor++;
-            }
+    return canvas;
+})();
+const fontCanvasCtx = fontCanvas.getContext("2d")!;
+export function drawString(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, charsWidth: number = 32, color: string = Consts.PENCIL_COLOR) {
+    fontCanvasCtx.fillStyle = color;
+    fontCanvasCtx.fillRect(0, 0, Consts.CHAR_WIDTH * 16, Consts.CHAR_HEIGHT * 16);
+    fontCanvasCtx.globalCompositeOperation = "destination-in";
+    fontCanvasCtx.drawImage(Assets.textures.font, 0, 0);
+    fontCanvasCtx.globalCompositeOperation = "source-over";
+
+    let lines = splitIntoWordsWithLen(s, charsWidth);
+
+    for (let [lineY, line] of lines.entries()) {
+        for (let i = 0; i < line.length; i++) {
+            let cp = line.codePointAt(i)!;
+            let sx = cp % 16;
+            let sy = Math.floor(cp / 16);
+
+            ctx.drawImage(fontCanvas, sx * Consts.CHAR_WIDTH, sy * Consts.CHAR_HEIGHT,
+                Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT,
+                x + i * (Consts.CHAR_WIDTH + Consts.KERNING_X), y + lineY * (Consts.CHAR_HEIGHT + Consts.KERNING_Y),
+                Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT);
+
         }
     }
 }

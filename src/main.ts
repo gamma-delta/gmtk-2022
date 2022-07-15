@@ -1,11 +1,11 @@
-import { Globals } from "./globals.js";
+import { RollPlayingGame } from "./game.js";
 import { InputState } from "./inputs.js";
 import { Consts } from "./consts.js";
 
 "use strict";
 
 const elmCanvas = document.getElementById("gameCanvas") as HTMLCanvasElement;
-const globals = new Globals(elmCanvas);
+const globals = new RollPlayingGame(elmCanvas);
 const controls = new InputState();
 
 window.addEventListener('keydown', (ev) => controls.registerKeydown(ev.key));

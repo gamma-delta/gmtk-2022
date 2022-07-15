@@ -1,6 +1,8 @@
 const Assets = {
     textures: {
-        font: image("font")
+        font: image("font"),
+        numberFont: image("number_font"),
+        diceAtlas: image("dice")
     },
     audio: {
         bgMusic: audio("punch_card_blues")

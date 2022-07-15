@@ -1,4 +1,4 @@
-import { Globals } from "./globals.js";
+import { Consts } from "./consts.js";
 
 class InputState {
     inputTimes: Map<string, number>;
@@ -33,8 +33,8 @@ class InputState {
     }
 
     registerMouseMove(ev: MouseEvent) {
-        this.mouseX = ev.offsetX / Globals.canvasScale;
-        this.mouseY = ev.offsetY / Globals.canvasScale;
+        this.mouseX = ev.offsetX / Consts.CANVAS_SCALE;
+        this.mouseY = ev.offsetY / Consts.CANVAS_SCALE;
     }
 
     update() {

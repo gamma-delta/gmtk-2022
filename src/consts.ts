@@ -1,12 +1,21 @@
+const CHAR_WIDTH = 8;
+const CHAR_HEIGHT = 8;
+const KERNING_X = 0;
+const KERNING_Y = 2;
 const Consts = {
     fps: 30,
-    canvasScale: 4,
+
+    CANVAS_SCALE: 3,
+
+    CHAR_WIDTH, CHAR_HEIGHT, KERNING_X, KERNING_Y,
+
+    BG_COLOR: "#f0ffff",
+    PINK_LINE_COLOR: "#f4887c",
+    BLUE_LINE_COLOR: "#acd8f1",
+    PENCIL_COLOR: "#696a6a",
+    HORIZ_LINE_SPACING: CHAR_HEIGHT + KERNING_Y,
+    VERT_LINE_OFFSET: CHAR_WIDTH * 2,
 }
 
-enum GameMode {
-    Title,
-    Tutorial,
-    Playing,
-}
 
 export { Consts }

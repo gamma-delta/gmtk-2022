@@ -1,15 +1,17 @@
 import { Assets } from "./assets.js";
+import { Consts } from "./consts.js";
 import { InputState } from "./inputs.js";
 import { GameState } from "./states.js";
 import { StateSplash } from "./states/splash.js";
 
-class Globals {
+export class RollPlayingGame {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     width: number;
     height: number;
 
     audio: {
+        initialized: boolean,
         ctx: AudioContext,
 
         bgMusic: HTMLAudioElement,
@@ -18,14 +20,6 @@ class Globals {
     }
 
     state: GameState;
-
-    static stateTitleScreen = "TITLE_SCREEN";
-    static stateInitGameplay = "INIT_GAMEPLAY";
-    static stateNormalGameplay = "NORMAL_GAMEPLAY";
-    static statePlayerDying = "PLAYER_DYING";
-    static statePlayerDead = "PLAYER_DEAD";
-
-    static canvasScale = 4;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -40,7 +34,7 @@ class Globals {
         this.height = canvas.height;
 
         // this has to be lateinit
-        this.audio = {} as any;
+        this.audio = { initialized: false } as any;
 
         this.state = new StateSplash();
     }
@@ -70,9 +64,15 @@ class Globals {
                 this.audio.bgMusic.play();
             }, false);
         this.audio.bgMusic.play();
+
+        this.audio.initialized = true;
     }
 
     update(controls: InputState) {
+        if (controls.isClicked("mouse") && !this.audio.initialized) {
+            this.initAudio();
+        }
+
         const nextState = this.state.update(controls);
         if (nextState !== null) {
             this.state = nextState;
@@ -80,9 +80,24 @@ class Globals {
     }
 
     draw(controls: InputState) {
+        this.ctx.fillStyle = Consts.BG_COLOR;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.state.draw(controls, this.ctx);
+
+        this.ctx.lineWidth = 1.0;
+        this.ctx.strokeStyle = Consts.BLUE_LINE_COLOR;
+        for (let y = Consts.CHAR_HEIGHT * 3 - Consts.KERNING_Y; y < this.height; y += Consts.HORIZ_LINE_SPACING) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y - 0.5);
+            this.ctx.lineTo(this.width, y - 0.5);
+            this.ctx.stroke();
+        }
+        this.ctx.strokeStyle = Consts.PINK_LINE_COLOR;
+        this.ctx.lineWidth = 2.0;
+        this.ctx.beginPath();
+        this.ctx.moveTo(Consts.VERT_LINE_OFFSET, 0);
+        this.ctx.lineTo(Consts.VERT_LINE_OFFSET, this.height);
+        this.ctx.stroke();
+
+        this.state.draw(controls, this.ctx, { width: this.width, height: this.height });
     }
 }
-
-export { Globals };

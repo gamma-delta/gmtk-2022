@@ -1,17 +1,21 @@
+import { Consts } from "../consts.js";
 import { InputState } from "../inputs.js";
 import { GameState } from "../states.js";
 import { drawString } from "../utils.js";
+import { StatePlaying } from "./playing.js";
 
 export class StateSplash implements GameState {
     constructor() { }
 
     update(controls: InputState): GameState | null {
         if (controls.isClicked("mouse")) {
-            // todo
+            return StatePlaying.start();
         }
         return null;
     }
     draw(controls: InputState, ctx: CanvasRenderingContext2D) {
-        drawString("Hello, world!", 10, 10, "#0", 100, ctx);
+        drawString(ctx,
+            "Roll-Playing Game\n\nBy petrak@, with art by Falkory and music by Cass Cuttlefish\n\nClick to start!",
+            Consts.VERT_LINE_OFFSET + Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT * 3);
     }
 }

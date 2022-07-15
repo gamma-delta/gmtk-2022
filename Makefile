@@ -6,7 +6,7 @@ out/main.js : $(wildcard src/*) $(wildcard src/states/*)
 	tsc --project tsconfig.json
 	cp src/index.html out
 
-out/assets/.makeflag : $(wildcard assets/*)
+out/assets/.makeflag : $(wildcard assets/audio/* assets/textures/*)
 	rm --recursive --force out/assets
 	mkdir -p out/assets
 	cp -r assets/* out/assets

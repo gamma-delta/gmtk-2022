@@ -5,11 +5,11 @@ const KERNING_Y = 2;
 const Consts = {
     fps: 30,
 
-    CANVAS_SCALE: 1,
+    CANVAS_SCALE: 3 / 2,
 
     CHAR_WIDTH, CHAR_HEIGHT, KERNING_X, KERNING_Y,
 
-    BG_COLOR: "#f0ffff",
+    BG_COLOR: "#ede6d5",
     PINK_LINE_COLOR: "#f4887c",
     BLUE_LINE_COLOR: "#acd8f1",
     PENCIL_COLOR: "#494d47",

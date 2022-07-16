@@ -73,7 +73,7 @@ export const Monsters = {
         },
         name: ["birate", "trirate"][threshold - 2],
         blurb: `Defeated by a number you have ${threshold} or more of.\n\nMost pirates were driven out of work during 754 I.E.`
-            + ` Interestingly enough, although pirates were human, birates and trirates are actually fungi that perfectly resemble humans.`,
+            + ` Interestingly enough, although pirates were human, birates and trirates are fungi that perfectly resemble humans.`,
         bodyParts: ["eye patch", "hook hand", "peg leg", "grog"],
         image: Assets.textures.ninja,
     }),
@@ -142,12 +142,12 @@ export const Monsters = {
 function makeModronBlurb(rank: number): string {
     let defeat = (rank === 1) ? "Defeated by any number." : `Defeated by multiples of ${rank}.`;
     let message = [
-        "Poor monodrons. These foot soldiers of Primus' army are so brittle, any number you throw at them will defeat them."
-        + " One wonders why a god of order and logic would spend so much time making something so useless.",
+        "These foot soldiers of Primus' army are so brittle, any value will defeat them."
+        + "Such is the fate of fodder. A god of order must have pawns, and monodrons are ... well, not \"happy,\" but willing to serve.",
         "Primus' priests hold that when a higher-ranking modron dies, a modron of the rank below somewhere in the multiverse becomes a rank higher in a puff of smoke."
         + " No one has ever actually seen this happen, however. Devotees claim this is proof of Primus' power; there are simply so many modrons the chance that the"
         + " one you're fighting gets upgraded is infinitesimal.",
-        "Legend has it that the various arities of modron are not actually progressively stronger."
+        "Legend has it that the various arities of modron do not get any stronger."
         + " They simply acquire a taste for more exotic numbers as their processors get more sophisticated.",
         "Quadrons are the lowest rank of modron with the ability to speak. They spend much of this newfound power griping about "
         + ' how much they hate being called quadcopters and emphasizing that "quadron" is pronounced with a short "o."',

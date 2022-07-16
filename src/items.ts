@@ -1,3 +1,4 @@
+import { Assets } from "./assets.js";
 import { Die } from "./model.js";
 import { randint, titleCase } from "./utils.js";
 
@@ -7,6 +8,8 @@ export interface DieMod {
     short: string,
     description: string,
     flavor: string,
+
+    image: HTMLImageElement,
 }
 
 export const DieMods = {
@@ -18,7 +21,8 @@ export const DieMods = {
             name: "Modron Core " + rank,
             short: "=" + rank,
             description: `Makes the die always roll ${rank}.`,
-            flavor: `Due to Primus' divine influence, a modron's core suppresses probability near itself.`
+            flavor: `Due to Primus' divine influence, a modron's core suppresses probability near itself.`,
+            image: Assets.textures.modronCore
         }
     },
     highdraHead(): DieMod {
@@ -29,7 +33,8 @@ export const DieMods = {
             name: "High-dra Head",
             short: "MAX",
             description: "Makes the die always roll its highest possible value.",
-            flavor: "High-dra venom is sometimes sold in irreputable taverns for its ... strengthening effects."
+            flavor: "High-dra venom is sometimes sold in irreputable taverns for its ... strengthening effects.",
+            image: Assets.textures.ninja
         }
     },
     nloon(multiplier: number, metal: "silver" | "gold"): DieMod {
@@ -56,7 +61,8 @@ export const DieMods = {
             name: metal + " " + coinType,
             short,
             description,
-            flavor: "Doubloons and trebloons are actually useless as currency, due to their tendency to mess up ledgers and accounting books.",
+            flavor: "Doubloons and trebloons are useless as currency, due to their tendency to mess up ledgers and accounting books.",
+            image: [Assets.textures.doubloon, Assets.textures.trebloon][multiplier - 2],
         }
     }
 }
@@ -77,6 +83,7 @@ export interface Item {
     name: string,
     short: string,
     description: string,
+    image: HTMLImageElement,
 }
 
 export const Items = {
@@ -85,7 +92,8 @@ export const Items = {
             name: "healing potion",
             short: "\x7f1", // cp437 house
             description: "Restores a single die.",
-            data: { type: "restoreOne" }
+            data: { type: "restoreOne" },
+            image: Assets.textures.potionHealing,
         }
     },
     greaterHealingPotion(): Item {
@@ -93,7 +101,8 @@ export const Items = {
             name: "greater healing potion",
             short: "\x7fA",
             description: "Restores all your dice.",
-            data: { type: "restoreAll" }
+            data: { type: "restoreAll" },
+            image: Assets.textures.potionHealing2,
         }
     },
     luckPotion(): Item {
@@ -101,7 +110,8 @@ export const Items = {
             name: "luck potion",
             short: "\xf51", // section, but looks like a swirl
             description: "Rerolls a single die.",
-            data: { type: "rerollOne" }
+            data: { type: "rerollOne" },
+            image: Assets.textures.potionLuck
         }
     },
     greaterLuckPotion(): Item {
@@ -109,7 +119,8 @@ export const Items = {
             name: "greater luck potion",
             short: "\xf5A",
             description: "Rerolls all your dice.",
-            data: { type: "rerollAll" }
+            data: { type: "rerollAll" },
+            image: Assets.textures.potionLuck2
         }
     },
     toItem(mod: DieMod): Item {
@@ -120,7 +131,8 @@ export const Items = {
             data: {
                 type: "mod",
                 dieMod: mod,
-            }
+            },
+            image: mod.image,
         }
     }
 }

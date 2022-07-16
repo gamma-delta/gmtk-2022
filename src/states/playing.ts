@@ -1,6 +1,7 @@
+import { Assets } from "../assets.js";
 import { Consts } from "../consts.js";
 import { InputState } from "../inputs.js";
-import { DieMod, Item } from "../items.js";
+import { DieMod, Item, Items } from "../items.js";
 import { Die, Level, PlayerClasses } from "../model.js";
 import { DrawInfo, GameState } from "../states.js";
 import { lethalDamage, nonLethalDamage } from "../strings.js";
@@ -17,6 +18,8 @@ const INFO_BOX_CHAR_WIDTH = 48;
 const DIE_ROLL_TIME = 20;
 const MONSTER_ANIM_TIME = 20;
 const MONSTER_FALL_TIME = 8;
+
+const ITEM_SIZE = 20;
 
 export class StatePlaying implements GameState {
     level: Level;
@@ -46,13 +49,14 @@ export class StatePlaying implements GameState {
             ":: Welcome to Roll-Playing Game.",
             ":: You hold your newspaper hat tight to your head as you step into the dungeon, dust billowing like an ancient book under your footsteps.",
             ":: Your mentor's advice echoes in your head:",
-            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the treasure chest."'
+            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the treasure chest."',
+            ':: "Go as deep as you can, and don\'t run out of dice!"',
         ];
 
         const clazz = PlayerClasses[0];
 
         const level = Level.generateFromDepth(0);
-        return new StatePlaying(level, 0, clazz.dice, clazz.items, startLog);
+        return new StatePlaying(level, 0, clazz.dice.slice(), clazz.items.slice(), startLog);
     }
 
     private constructor(level: Level, depth: number, dice: Die[], items: Item[], log: string[]) {
@@ -70,7 +74,7 @@ export class StatePlaying implements GameState {
                 let y = ART_HEIGHT + (DIE_TRAY_HEIGHT / 2 - Die.TEX_HEIGHT / 2) + (used ? DIE_TRAY_HEIGHT : 0);
                 this.widgets.push(new WidgetDie(this, x, y, Die.TEX_WIDTH, Die.TEX_HEIGHT, i, used));
                 if (used === true) {
-                    this.widgets.push(new WidgetItem(this, x, y + DIE_TRAY_HEIGHT, Die.TEX_WIDTH, Die.TEX_HEIGHT, i));
+                    this.widgets.push(new WidgetItem(this, x - 1, y + DIE_TRAY_HEIGHT - 8, ITEM_SIZE, ITEM_SIZE, i));
                 }
             }
         }
@@ -281,35 +285,56 @@ export class StatePlaying implements GameState {
         ctx.restore();
 
         let mode = this.mode();
+        let thisImage = null;
+        let prevImage = null;
+        let animMode: "kill" | "run" | "bob" | "none" = "none";
+        let dt = -1;
         if (mode === "monster") {
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(0, 0, ART_WIDTH, ART_HEIGHT);
-            ctx.clip();
-
             let monster = this.level.monsters[this.monsterIdx];
             if (this.monsterAnim.mode === "none") {
-                let bobSpeed = 35;
-                let dy = (this.frames % bobSpeed >= bobSpeed / 2) ? -1 : 1;
-                ctx.drawImage(monster.image, 0, 0 + dy, ART_WIDTH, ART_HEIGHT);
-            } else if (this.monsterAnim.mode === "kill") {
-                let dt = this.frames - this.monsterAnim.startFrame;
-                if (dt < MONSTER_FALL_TIME) {
-                    let progress = dt / MONSTER_FALL_TIME;
-                    let t = 1 - (1 - progress) * (1 - progress);
-                    ctx.drawImage(this.level.monsters[this.monsterIdx - 1].image, 0, t * ART_HEIGHT, ART_WIDTH, (1 - t) * ART_HEIGHT);
-                } else {
-                    let progress = (dt - MONSTER_FALL_TIME) / (MONSTER_ANIM_TIME - MONSTER_FALL_TIME);
-                    let t = 1 - (1 - progress) * (1 - progress);
-                    ctx.drawImage(monster.image, (1 - t) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
-                }
-            } else if (this.monsterAnim.mode === "run") {
-                let dt = this.frames - this.monsterAnim.startFrame;
-                ctx.drawImage(this.level.monsters[this.monsterIdx - 1].image, -(dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
-                ctx.drawImage(monster.image, ART_WIDTH - (dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
+                thisImage = monster.image;
+                animMode = "bob";
+            } else if (this.monsterAnim.mode === "kill" || this.monsterAnim.mode === "run") {
+                dt = this.frames - this.monsterAnim.startFrame;
+                thisImage = monster.image;
+                prevImage = this.level.monsters[this.monsterIdx - 1].image;
+                animMode = this.monsterAnim.mode;
             }
-            ctx.restore()
+        } else if (mode === "treasureChest") {
+            thisImage = Assets.textures.treasureChest;
+            animMode = this.monsterAnim.mode;
+            if (this.monsterAnim.mode !== "none") {
+                dt = this.frames - this.monsterAnim.startFrame;
+                prevImage = this.level.monsters[this.monsterIdx - 1].image;
+            }
         }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, ART_WIDTH, ART_HEIGHT);
+        ctx.clip();
+        if (thisImage !== null && (animMode === "none" || animMode === "bob")) {
+            let dy = 0;
+            let bobSpeed = 35;
+            if (animMode === "bob")
+                dy = (this.frames % bobSpeed >= bobSpeed / 2) ? -1 : 1;
+            ctx.drawImage(thisImage, 0, 0 + dy, ART_WIDTH, ART_HEIGHT);
+        } else if (thisImage !== null && prevImage !== null && animMode === "kill") {
+            if (dt < MONSTER_FALL_TIME) {
+                let progress = dt / MONSTER_FALL_TIME;
+                let t = 1 - (1 - progress) * (1 - progress);
+                ctx.drawImage(prevImage, 0, t * ART_HEIGHT, ART_WIDTH, (1 - t) * ART_HEIGHT);
+            } else {
+                let progress = (dt - MONSTER_FALL_TIME) / (MONSTER_ANIM_TIME - MONSTER_FALL_TIME);
+                let t = 1 - (1 - progress) * (1 - progress);
+                ctx.drawImage(thisImage, (1 - t) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
+            }
+        }
+        else if (thisImage !== null && prevImage !== null && animMode === "run") {
+            ctx.drawImage(prevImage, -(dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
+            ctx.drawImage(thisImage, ART_WIDTH - (dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
+        }
+        ctx.restore()
 
         for (let wig of this.widgets) {
             wig.draw(ctx);
@@ -407,9 +432,9 @@ class WidgetItem extends Widget<StatePlaying> {
     draw(ctx: CanvasRenderingContext2D): void {
         let item = this.state.items[this.index];
         if (item === undefined) return;
-        // TODO textures
+        ctx.drawImage(item.image, this.x, this.y);
 
-        drawStringAlign(ctx, item.short, this.x + Die.TEX_WIDTH / 2, this.y + Die.TEX_HEIGHT + 4, "center");
+        drawStringAlign(ctx, item.short, this.x + ITEM_SIZE / 2, this.y + ITEM_SIZE + 4, "center");
     }
 }
 

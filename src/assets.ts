@@ -15,6 +15,16 @@ const Assets = {
         gelatinousCube: image("monsters/gelatinous_cube"),
         dragon: image("monsters/dragon"),
         ninja: image("monsters/masterful_ninja"),
+
+        potionHealing: image("items/healing"),
+        potionHealing2: image("items/greater_healing"),
+        potionLuck: image("items/luck"),
+        potionLuck2: image("items/greater_luck"),
+        modronCore: image("items/modron_core"),
+        doubloon: image("items/doubloon"),
+        trebloon: image("items/trebloon"),
+
+        treasureChest: image("treasure_chest"),
     },
     audio: {
         bgMusic: audio("dicejam.mp3")

@@ -16,7 +16,8 @@ serve : build
 	python -m http.server --directory out
 
 release.zip : build
-	zip -u release.zip out
+	rm release.zip
+	cd out; zip -r ../release.zip *
 
 clean :
 	rm -r out

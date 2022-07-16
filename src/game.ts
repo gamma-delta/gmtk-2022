@@ -81,7 +81,7 @@ export class RollPlayingGame {
 
     draw(controls: InputState) {
         this.ctx.fillStyle = Consts.BG_COLOR;
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.ctx.lineWidth = 1.0;
         this.ctx.strokeStyle = Consts.BLUE_LINE_COLOR;

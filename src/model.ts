@@ -1,5 +1,6 @@
 import { Assets } from "./assets.js";
 import { Consts } from "./consts.js";
+import { DieMod, DieMods, Item, Items } from "./items.js";
 import { Monster, Monsters, MonstersAndDifficulties } from "./monsters.js";
 import { drawString, randint, titleCase } from "./utils.js";
 
@@ -79,60 +80,6 @@ export class Die {
     }
 }
 
-export interface DieMod {
-    modifyRoll(die: Die, roll: number): number,
-    name: string,
-    short: string,
-    description: string,
-}
-
-export const DieMods = {
-    modronCore(rank: number): DieMod {
-        return {
-            modifyRoll(die, roll) {
-                return rank;
-            },
-            name: "Modron Core " + rank,
-            short: "=" + rank,
-            description: `Makes the die always roll ${rank}. Due to Primus' divine influence, a modron's core suppresses probability near itself.`
-        }
-    },
-    highdraHead(): DieMod {
-        return {
-            modifyRoll(die, roll) {
-                return die.sides;
-            },
-            name: "High-dra Head",
-            short: "MAX",
-            description: "Makes the die always roll its highest possible value."
-        }
-    },
-    nloon(multiplier: number, metal: "silver" | "gold"): DieMod {
-        let description;
-        let short;
-        if (metal === "gold") {
-            description = `Multiplies the die roll by ${multiplier}.`;
-            short = "$" + multiplier;
-        } else {
-            description = `Makes the die act as if it had ${multiplier}x as many sides.`;
-            short = "c" + multiplier;
-        }
-        let coinType = ["Doubloon", "Trebloon"][multiplier - 2];
-        return {
-            modifyRoll(die, roll) {
-                if (metal === "gold") {
-                    return roll * multiplier;
-                } else {
-                    return randint(1, die.sides * multiplier + 1);
-                }
-            },
-            name: coinType + " " + titleCase(metal),
-            short,
-            description
-        }
-    }
-}
-
 export class Level {
     monsters: Monster[];
 
@@ -183,7 +130,7 @@ export interface PlayerClass {
     description: string,
     difficulty: number,
     dice: Die[],
-    items: DieMod[],
+    items: Item[],
 }
 
 export const PlayerClasses: PlayerClass[] = [
@@ -193,7 +140,9 @@ export const PlayerClasses: PlayerClass[] = [
         difficulty: 1,
         dice: [new Die(4), new Die(6), new Die(6), new Die(6), new Die(8)],
         items: [
-            DieMods.nloon(2, "silver")
+            Items.toItem(DieMods.nloon(2, "silver")),
+            Items.healingPotion(),
+            Items.luckPotion(),
         ]
     },
     {
@@ -202,9 +151,10 @@ export const PlayerClasses: PlayerClass[] = [
         difficulty: 1,
         dice: [new Die(4), new Die(4), new Die(4), new Die(4), new Die(4)],
         items: [
-            DieMods.nloon(2, "gold"),
-            DieMods.nloon(3, "gold"),
-            DieMods.modronCore(5),
+            Items.toItem(DieMods.nloon(2, "gold")),
+            Items.toItem(DieMods.nloon(3, "gold")),
+            Items.toItem(DieMods.modronCore(5)),
+            Items.greaterHealingPotion(),
         ]
     }
 ]

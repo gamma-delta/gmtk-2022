@@ -5,7 +5,7 @@ const Assets = {
         diceAtlas: image("dice")
     },
     audio: {
-        bgMusic: audio("punch_card_blues")
+        bgMusic: audio("dicejam.mp3")
     }
 };
 
@@ -17,7 +17,7 @@ function image(url: string) {
 
 function audio(url: string) {
     let audio = new Audio();
-    audio.src = "assets/audio/" + url + ".ogg";
+    audio.src = "assets/audio/" + url;
     return audio;
 }
 

@@ -1,9 +1,9 @@
-import { DieMod, DieMods } from "./model.js";
+import { DieMod, DieMods, Item, Items } from "./items.js";
 import { pick, randint } from "./utils.js";
 
 export interface Monster {
     defeatedBy(dice: number[], idx: number): boolean;
-    itemDropped(): DieMod | null;
+    itemDropped(): Item | null;
     name: string,
     blurb: string,
     bodyParts: string[],
@@ -13,8 +13,8 @@ export const Monsters = {
     modron: (rank: number): Monster => ({
         defeatedBy: (dice, idx) => dice[idx] % rank === 0,
         itemDropped() {
-            if (Math.random() < 0.5) return null;
-            return DieMods.modronCore(rank);
+            if (Math.random() < 0.7) return null;
+            return Items.toItem(DieMods.modronCore(rank));
         },
         name: ["monodron", "duodron", "tridron", "quadron", "pentadron"][rank - 1],
         blurb: makeModronBlurb(rank),
@@ -34,7 +34,7 @@ export const Monsters = {
         },
         itemDropped() {
             if (Math.random() < 0.2) return null;
-            return DieMods.highdraHead();
+            return Items.toItem(DieMods.highdraHead());
         },
         name: "high-dra",
         blurb: "Defeated by your highest die.\n\nThe high-dra is a cousin to the pi-dra. Pi-dras were hunted to extinction in 754 I.E. after people got sick of dealing with the points they left floating everywhere.",
@@ -54,10 +54,11 @@ export const Monsters = {
         itemDropped() {
             if (Math.random() < 0.5) return null;
             let type = (threshold <= 2) ? "silver" : "gold";
-            return pick([
+            let mod = pick([
                 DieMods.nloon(2, type as any),
                 DieMods.nloon(3, type as any),
-            ])
+            ]);
+            return Items.toItem(mod);
         },
         name: ["birate", "trirate"][threshold - 2],
         blurb: `Defeated by a number you have ${threshold} or more of.\n\nMost pirates were driven out of work during 754 I.E.`
@@ -74,7 +75,10 @@ export const Monsters = {
             }
             return false;
         },
-        itemDropped: () => null,
+        itemDropped() {
+            if (Math.random() < 0.6) return null;
+            return Items.luckPotion();
+        },
         name: "cobble goblin",
         blurb: "Defeated by composite numbers. 1 is not composite.\n\nIt's this little goblin's first day on dungeon duty, and all it could find was this patchy armor that lets composite numbers through. Poor thing.",
         bodyParts: ["leg", "arm", "head", "nose", "eye", "pointy ear"]
@@ -89,7 +93,10 @@ export const Monsters = {
             }
             return true;
         },
-        itemDropped: () => null,
+        itemDropped() {
+            if (Math.random() < 0.6) return null;
+            return Items.greaterLuckPotion();
+        },
         name: "prime goblin",
         blurb: "Defeated by prime numbers. 1 is not prime.\n\nAt some point, the idea of giving a prime goblin a cobble goblin's armor was raised, but the discussion fell apart. The goblins couldn't decide what to do with the number 1, given most of them can't count much higher.",
         bodyParts: ["leg", "arm", "head", "nose", "eye", "pointy ear"]
@@ -100,7 +107,10 @@ export const Monsters = {
             let sqrt = Math.sqrt(roll);
             return Math.abs((sqrt - Math.round(sqrt))) < 0.0001;
         },
-        itemDropped: () => null,
+        itemDropped() {
+            if (Math.random() < 0.6) return null;
+            return Items.healingPotion();
+        },
         name: "gelatinous square",
         blurb: "Defeated by square numbers.\n\nJust a plane ol' gelatinous square.",
         bodyParts: ["gel", "gelatin", "corner", "edge"],
@@ -111,7 +121,10 @@ export const Monsters = {
             let cbrt = Math.cbrt(roll);
             return Math.abs((cbrt - Math.round(cbrt))) < 0.0001;
         },
-        itemDropped: () => null,
+        itemDropped() {
+            if (Math.random() < 0.6) return null;
+            return Items.greaterHealingPotion();
+        },
         name: "gelatinous cube",
         blurb: 'Defeated by cubic numbers.\n\nIn the old days, gelatinous cubes used to be farmed for their gelatin. It was marketed as a "cruelty-free" or vegetarian gelatin, saving those poor pigs from getting their joints melted down. For some reason, people still bought it.',
         bodyParts: ["gel", "gelatin", "corner", "edge", "face"],

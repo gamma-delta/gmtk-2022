@@ -1,17 +1,20 @@
 import { Consts } from "../consts.js";
 import { InputState } from "../inputs.js";
-import { Die, DieMod, Level, PlayerClasses } from "../model.js";
+import { DieMod, Item } from "../items.js";
+import { Die, Level, PlayerClasses } from "../model.js";
 import { DrawInfo, GameState } from "../states.js";
 import { lethalDamage, nonLethalDamage } from "../strings.js";
-import { drawString, drawStringAlign, pick, splitIntoWordsWithLen, titleCase } from "../utils.js";
+import { drawString, drawStringAlign, pick, randint, splitIntoWordsWithLen, titleCase } from "../utils.js";
 import { Widget } from "../widget.js";
 import { StateLose } from "./lose.js";
 
 const ART_WIDTH = 240;
 const ART_HEIGHT = 240;
 const INFO_BOX_HEIGHT = Consts.CHAR_WIDTH * 23.75;
-const DIE_TRAY_HEIGHT = 48;
+const DIE_TRAY_HEIGHT = Math.round((400 - ART_HEIGHT) / 3 / 2) * 2;
 const INFO_BOX_CHAR_WIDTH = 48;
+
+const DIE_ROLL_TIME = 20;
 
 export class StatePlaying implements GameState {
     level: Level;
@@ -21,7 +24,7 @@ export class StatePlaying implements GameState {
     dice: [Die, number][];
     // Indices of used-up dice
     usedDice: [Die, number][];
-    items: DieMod[];
+    items: Item[];
 
     depth: number;
     swapState: GameState | null = null;
@@ -29,8 +32,10 @@ export class StatePlaying implements GameState {
     static MAX_DIE_COUNT = 8;
 
     widgets: Widget<StatePlaying>[];
-    panelMode: PanelMode = "monster";
+    coverMode: CoverMode = { type: "none" };
     treasureChest: Die;
+
+    frames: number = 0;
 
     static start() {
         const startLog = [
@@ -46,7 +51,7 @@ export class StatePlaying implements GameState {
         return new StatePlaying(level, 0, clazz.dice, clazz.items, startLog);
     }
 
-    private constructor(level: Level, depth: number, dice: Die[], items: DieMod[], log: string[]) {
+    private constructor(level: Level, depth: number, dice: Die[], items: Item[], log: string[]) {
         this.level = level;
         this.depth = depth;
 
@@ -58,8 +63,11 @@ export class StatePlaying implements GameState {
         for (let used of [false, true]) {
             for (let i = 0; i < StatePlaying.MAX_DIE_COUNT; i++) {
                 let x = Consts.VERT_LINE_OFFSET + Consts.CHAR_WIDTH + i * (Die.TEX_WIDTH + Consts.CHAR_WIDTH);
-                let y = ART_HEIGHT + 16 + (used ? DIE_TRAY_HEIGHT : 0);
+                let y = ART_HEIGHT + (DIE_TRAY_HEIGHT / 2 - Die.TEX_HEIGHT / 2) + (used ? DIE_TRAY_HEIGHT : 0);
                 this.widgets.push(new WidgetDie(this, x, y, Die.TEX_WIDTH, Die.TEX_HEIGHT, i, used));
+                if (used === true) {
+                    this.widgets.push(new WidgetItem(this, x, y + DIE_TRAY_HEIGHT, Die.TEX_WIDTH, Die.TEX_HEIGHT, i));
+                }
             }
         }
         this.widgets.push(new WidgetInfoPanel(this, ART_WIDTH, 0, 999999, ART_WIDTH));
@@ -68,40 +76,86 @@ export class StatePlaying implements GameState {
         this.treasureChest = new Die(pick([4, 6, 8, 10, 12, 20]));
     }
 
+    mode(): "monster" | "treasureChest" | "lost" {
+        if (this.dice.length === 0) {
+            return "lost";
+        } else if (this.monsterIdx >= this.level.monsters.length) {
+            return "treasureChest";
+        } else {
+            return "monster";
+        }
+    }
+
     update(controls: InputState): GameState | null {
         for (let wig of this.widgets) {
             wig.update(controls);
         }
 
-        if (this.monsterIdx >= this.level.monsters.length) {
-            this.panelMode = "treasureChest";
-        } else if (this.dice.length === 0) {
-            this.panelMode = "lose";
-        }
-
+        this.frames++;
         return this.swapState;
     }
 
-    useDie(index: number) {
-        if (index >= this.dice.length || this.monsterIdx >= this.level.monsters.length) { return; }
+    useDie(index: number, used: boolean) {
+        if (this.coverMode.type === "applyingItem") {
+            let item = this.items[this.coverMode.itemIdx];
+            if (item.data.type === "mod") {
+                let diePair = (used ? this.usedDice : this.dice)[index];
+                if (diePair === undefined) return;
 
-        const monster = this.level.monsters[this.monsterIdx];
-        let defeated = monster.defeatedBy(this.dice.map(pair => pair[1]), index);
-        let [diePair] = this.dice.splice(index, 1);
-        if (defeated) {
-            this.usedDice.push(diePair);
-            this.log.push(":: " + lethalDamage(diePair[1], monster));
-            this.log.push(`:: The ${monster.name} dies!`);
-            this.log.push(`:: You retrieve your d${diePair[0].sides}.`);
-        } else {
-            this.log.push(":: " + nonLethalDamage(diePair[1], monster));
-            this.log.push(`:: It slinks off into the darkness with your d${diePair[0].sides}.`);
+                let oldMod = diePair[0].mod;
+                diePair[0].mod = item.data.dieMod;
+
+                if (oldMod !== null) {
+                    this.log.push(`:: You take the old ${oldMod.name} off of your d${diePair[0].sides} and replace it with the ${item.data.dieMod.name}.`);
+                } else {
+                    this.log.push(`:: You equip the ${item.data.dieMod.name} to your d${diePair[0].sides}.`);
+                }
+            } else if (item.data.type === "rerollOne") {
+                // ok i'll let you reroll a used die if you want fine
+                let diePair = (used ? this.usedDice : this.dice)[index];
+                if (diePair === undefined) return;
+                diePair[1] = diePair[0].roll();
+                this.log.push(`:: You pour the potion over your d${diePair[0].sides}. It rattles.`);
+
+                for (let wig of this.widgets) {
+                    if (wig instanceof WidgetDie && wig.index === index && wig.used === used) {
+                        wig.dieRollAnimFrame = this.frames;
+                        break;
+                    }
+                }
+            } else if (item.data.type === "restoreOne") {
+                if (!used || index >= this.usedDice.length) return;
+                let [diePair] = this.usedDice.splice(index, 1);
+                this.dice.push(diePair);
+                this.log.push(`:: You pour the potion over your d${diePair[0].sides}. It glows and refreshes.`);
+            } else {
+                console.log("Uh oh, tried to apply an item that shouldn't be applied", item);
+            }
+
+            this.items.splice(this.coverMode.itemIdx, 1);
+            this.coverMode = { type: "none" };
+        } else if (this.mode() === "monster") {
+            if (index >= this.dice.length || this.monsterIdx >= this.level.monsters.length) { return; }
+
+            const monster = this.level.monsters[this.monsterIdx];
+            let defeated = monster.defeatedBy(this.dice.map(pair => pair[1]), index);
+            let [diePair] = this.dice.splice(index, 1);
+            if (defeated) {
+                this.usedDice.push(diePair);
+                this.log.push(":: " + lethalDamage(diePair[1], monster));
+                this.log.push(`:: The ${monster.name} dies!`);
+                this.log.push(`:: You retrieve your d${diePair[0].sides}.`);
+            } else {
+                this.log.push(":: " + nonLethalDamage(diePair[1], monster));
+                this.log.push(`:: It slinks off into the darkness with your d${diePair[0].sides}.`);
+            }
+            this.monsterIdx++;
         }
-        this.monsterIdx++;
     }
 
     clickInfoPanel() {
-        if (this.panelMode === "treasureChest") {
+        let mode = this.mode();
+        if (mode === "treasureChest") {
             let nextLevel = Level.generateFromDepth(this.depth + 1);
             let dice = this.dice.map(d => d[0]);
             dice.push(...this.usedDice.map(d => d[0]));
@@ -109,15 +163,51 @@ export class StatePlaying implements GameState {
                 dice.push(this.treasureChest);
                 this.log.push(`:: You take the d${this.treasureChest.sides}.`);
             } else {
-                this.log.push(`:: You had no room for the d${this.treasureChest.sides}, so you left it there.`);
+                this.log.push(`:: You had no room for the d${this.treasureChest.sides} in the chest, so you left it there.`);
             }
             this.log.push(`:: You descend the stairs deeper into the dungeon, down to floor ${this.depth + 2}.`);
             this.swapState = new StatePlaying(nextLevel, this.depth + 1, dice, this.items, this.log);
-        } else if (this.panelMode === "lose") {
+        } else if (mode === "lost") {
             this.swapState = new StateLose({
                 depth: this.depth,
                 diedTo: this.level.monsters[this.monsterIdx],
             });
+        }
+    }
+
+    useItem(index: number) {
+        let item = this.items[index];
+        if (item === undefined) {
+            return;
+        }
+
+        let immediateUse = true;
+        if (item.data.type === "rerollAll") {
+            for (let pair of this.dice) {
+                pair[1] = pair[0].roll();
+            }
+            this.log.push(":: You pour the potion over your unused dice. They rattle.");
+            for (let wig of this.widgets) {
+                if (wig instanceof WidgetDie) {
+                    wig.dieRollAnimFrame = this.frames;
+                }
+            }
+        } else if (item.data.type === "restoreAll") {
+            this.dice.push(...this.usedDice);
+            this.usedDice = [];
+
+            this.log.push(":: You pour the potion over your used dice. They glow and refresh.");
+        } else {
+            immediateUse = false;
+        }
+
+        if (immediateUse) {
+            this.items.splice(index, 1);
+        } else {
+            this.coverMode = {
+                type: "applyingItem",
+                itemIdx: index,
+            };
         }
     }
 
@@ -150,8 +240,9 @@ export class StatePlaying implements GameState {
 
         ctx.save();
         ctx.rotate(-Math.PI / 2);
-        drawStringAlign(ctx, "Ready", -ART_HEIGHT - DIE_TRAY_HEIGHT / 2, Consts.CHAR_HEIGHT * 0.5, "center");
+        drawStringAlign(ctx, "Ready", -ART_HEIGHT - DIE_TRAY_HEIGHT * 0.5, Consts.CHAR_HEIGHT * 0.5, "center");
         drawStringAlign(ctx, "Used", -ART_HEIGHT - DIE_TRAY_HEIGHT * 1.5, Consts.CHAR_HEIGHT * 0.5, "center");
+        drawStringAlign(ctx, "Items", -ART_HEIGHT - DIE_TRAY_HEIGHT * 2.5, Consts.CHAR_HEIGHT * 0.5, "center");
         ctx.restore();
 
         for (let wig of this.widgets) {
@@ -188,6 +279,7 @@ export class StatePlaying implements GameState {
 class WidgetDie extends Widget<StatePlaying> {
     index: number;
     used: boolean;
+    dieRollAnimFrame: number = 0;
 
     constructor(state: StatePlaying, x: number, y: number, w: number, h: number, index: number, used: boolean) {
         super(state, x, y, w, h);
@@ -195,21 +287,63 @@ class WidgetDie extends Widget<StatePlaying> {
         this.used = used;
     }
 
-    onClick(): void {
-        if (!this.used) {
-            this.state.useDie(this.index);
+    onHoverChange(): void {
+        if (this.state.coverMode.type === "none" && this.isHovered) {
+            this.state.coverMode = { type: "hoverDie", index: this.index, used: this.used };
+        } else if (this.state.coverMode.type === "hoverDie" && !this.isHovered) {
+            this.state.coverMode = { type: "none" };
         }
+    }
+    onClick(): void {
+        this.state.useDie(this.index, this.used);
     }
     draw(ctx: CanvasRenderingContext2D): void {
         let diePair = (this.used ? this.state.usedDice : this.state.dice)[this.index];
         if (diePair === undefined) return;
         let [die, roll] = diePair;
-        die.draw(this.x, this.y, roll, ctx);
+        let x = this.x;
+        let y = this.y;
+
+        let draf = this.state.frames - this.dieRollAnimFrame;
+        if (0 <= draf && draf < DIE_ROLL_TIME) {
+            // Randomize the display.
+            roll = die.roll();
+            x += randint(-2, 3);
+            y += randint(-2, 3);
+        }
+        die.draw(x, y, roll, ctx);
 
         let sideStr = `d${die.sides}`;
         drawStringAlign(ctx, sideStr, this.x + Die.TEX_WIDTH / 2, this.y - Consts.CHAR_HEIGHT - 4, "center");
         if (die.mod !== null)
             drawStringAlign(ctx, die.mod.short, this.x + Die.TEX_WIDTH / 2, this.y + Die.TEX_HEIGHT + 4, "center");
+    }
+}
+
+class WidgetItem extends Widget<StatePlaying> {
+    index: number;
+
+    constructor(state: StatePlaying, x: number, y: number, w: number, h: number, index: number) {
+        super(state, x, y, w, h);
+        this.index = index;
+    }
+
+    onHoverChange(): void {
+        if (this.state.coverMode.type === "none" && this.isHovered) {
+            this.state.coverMode = { type: "hoverItem", index: this.index };
+        } else if (this.state.coverMode.type === "hoverItem" && !this.isHovered) {
+            this.state.coverMode = { type: "none" };
+        }
+    }
+    onClick(): void {
+        this.state.useItem(this.index);
+    }
+    draw(ctx: CanvasRenderingContext2D): void {
+        let item = this.state.items[this.index];
+        if (item === undefined) return;
+        // TODO textures
+
+        drawStringAlign(ctx, item.short, this.x + Die.TEX_WIDTH / 2, this.y + Die.TEX_HEIGHT + 4, "center");
     }
 }
 
@@ -224,25 +358,56 @@ class WidgetInfoPanel extends Widget<StatePlaying> {
     draw(ctx: CanvasRenderingContext2D): void {
         let header;
         let text;
-        if (this.state.panelMode === "monster") {
-            const monster = this.state.level.monsters[this.state.monsterIdx];
-            header = titleCase(monster.name);
-            let next = [];
-            for (let i = this.state.monsterIdx + 1; i < this.state.level.monsters.length; i++) {
-                next.push(this.state.level.monsters[i].name);
+        if (this.state.coverMode.type === "hoverItem" && this.state.coverMode.index < this.state.items.length) {
+            const item = this.state.items[this.state.coverMode.index];
+            header = titleCase(item.name);
+            text = item.description;
+        } else if (this.state.coverMode.type === "hoverDie" && this.state.coverMode.index < (this.state.coverMode.used ? this.state.usedDice : this.state.dice).length) {
+            const [die, roll] = (this.state.coverMode.used ? this.state.usedDice : this.state.dice)[this.state.coverMode.index];
+            header = "d" + die.sides;
+            text = `A d${die.sides} that has rolled a ${roll}.`;
+            if (die.mod !== null) {
+                text += `\n\nEquipped with ${die.mod.name}: ${die.mod.description}`;
             }
-            next.push("treasure chest");
-            text = monster.blurb + "\n\nComing up: " + next.join(", ") + ".";
-        } else if (this.state.panelMode === "treasureChest") {
-            header = `Floor ${this.state.depth + 1} defeated!`
-            text = `You found a treasure chest with a d${this.state.treasureChest.sides} in it! Click here to claim it and go to the next floor.`;
+        } else if (this.state.coverMode.type === "applyingItem") {
+            const item = this.state.items[this.state.coverMode.itemIdx];
+            header = "Equipping " + item.name;
+            text = "Click on a die to equip the " + item.name + " to.";
         } else {
-            header = "You died!";
-            text = `You were defenseless against the ${this.state.level.monsters[this.state.monsterIdx].name}.\n\nClick here to see your stats.`;
+            let mode = this.state.mode();
+            if (mode === "monster") {
+                const monster = this.state.level.monsters[this.state.monsterIdx];
+                header = titleCase(monster.name);
+                let next = [];
+                for (let i = this.state.monsterIdx + 1; i < this.state.level.monsters.length; i++) {
+                    next.push(this.state.level.monsters[i].name);
+                }
+                next.push("treasure chest");
+                text = monster.blurb + "\n\nComing up: " + next.join(", ") + ".";
+            } else if (mode === "treasureChest") {
+                header = `Floor ${this.state.depth + 1} defeated!`
+                text = `You found a treasure chest with a d${this.state.treasureChest.sides} in it! Click here to claim it and go to the next floor.`;
+            } else {
+                header = "You died!";
+                text = `You were defenseless against the ${this.state.level.monsters[this.state.monsterIdx].name}.\n\nClick here to see your stats.`;
+            }
+
         }
         drawString(ctx, header, ART_WIDTH + Consts.CHAR_WIDTH / 2, Consts.CHAR_HEIGHT + 6, INFO_BOX_CHAR_WIDTH, Consts.PINK_LINE_COLOR);
         drawString(ctx, text, ART_WIDTH + Consts.CHAR_WIDTH / 2, Consts.CHAR_HEIGHT * 3, INFO_BOX_CHAR_WIDTH);
     }
 }
 
-type PanelMode = "monster" | "treasureChest" | "lose";
+type CoverMode = {
+    type: "none"
+} | {
+    type: "hoverItem",
+    index: number,
+} | {
+    type: "hoverDie",
+    index: number,
+    used: boolean,
+} | {
+    type: "applyingItem",
+    itemIdx: number,
+};

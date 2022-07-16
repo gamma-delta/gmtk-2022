@@ -15,7 +15,7 @@ export class StateSplash implements GameState {
     }
     draw(controls: InputState, ctx: CanvasRenderingContext2D) {
         drawString(ctx,
-            "Roll-Playing Game\n\nBy petrak@, with art by Falkory and music by Cass Cuttlefish\n\nClick to start!",
+            "Roll-Playing Game\n\Code by petrak@, art by Falkory, and music by Cass Cuttlefish\n\nClick to start!",
             Consts.VERT_LINE_OFFSET + Consts.CHAR_WIDTH * 8, Consts.CHAR_HEIGHT * 8);
     }
 }

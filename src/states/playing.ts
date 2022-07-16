@@ -15,6 +15,8 @@ const DIE_TRAY_HEIGHT = Math.round((400 - ART_HEIGHT) / 3 / 2) * 2;
 const INFO_BOX_CHAR_WIDTH = 48;
 
 const DIE_ROLL_TIME = 20;
+const MONSTER_ANIM_TIME = 20;
+const MONSTER_FALL_TIME = 8;
 
 export class StatePlaying implements GameState {
     level: Level;
@@ -36,13 +38,15 @@ export class StatePlaying implements GameState {
     treasureChest: Die;
 
     frames: number = 0;
+    monsterAnim: { mode: "none" } | { mode: "kill" | "run", startFrame: number }
+        = { mode: "none" };
 
     static start() {
         const startLog = [
             ":: Welcome to Roll-Playing Game.",
             ":: You hold your newspaper hat tight to your head as you step into the dungeon, dust billowing like an ancient book under your footsteps.",
             ":: Your mentor's advice echoes in your head:",
-            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the staircase."'
+            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the treasure chest."'
         ];
 
         const clazz = PlayerClasses[0];
@@ -92,6 +96,9 @@ export class StatePlaying implements GameState {
         }
 
         this.frames++;
+        if (this.monsterAnim.mode != "none" && this.frames - this.monsterAnim.startFrame > MONSTER_ANIM_TIME) {
+            this.monsterAnim = { mode: "none" };
+        }
         return this.swapState;
     }
 
@@ -109,6 +116,13 @@ export class StatePlaying implements GameState {
                     this.log.push(`:: You take the old ${oldMod.name} off of your d${diePair[0].sides} and replace it with the ${item.data.dieMod.name}.`);
                 } else {
                     this.log.push(`:: You equip the ${item.data.dieMod.name} to your d${diePair[0].sides}.`);
+                }
+                diePair[1] = diePair[0].roll();
+                for (let wig of this.widgets) {
+                    if (wig instanceof WidgetDie && wig.index === index && wig.used === used) {
+                        wig.dieRollAnimFrame = this.frames;
+                        break;
+                    }
                 }
             } else if (item.data.type === "rerollOne") {
                 // ok i'll let you reroll a used die if you want fine
@@ -142,12 +156,27 @@ export class StatePlaying implements GameState {
             let [diePair] = this.dice.splice(index, 1);
             if (defeated) {
                 this.usedDice.push(diePair);
+
                 this.log.push(":: " + lethalDamage(diePair[1], monster));
                 this.log.push(`:: The ${monster.name} dies!`);
+
+                const item = monster.itemDropped();
+                if (item !== null) {
+                    this.log.push(`:: The ${monster.name} dropped a ${item.name}!`);
+                    if (this.items.length < StatePlaying.MAX_DIE_COUNT - 1) {
+                        this.items.push(item);
+                        this.log.push(`:: You pick up the ${item.name}.`);
+                    } else {
+                        this.log.push(`:: But you had no room for the ${item.name}, so you left it there.`);
+                    }
+                }
+
                 this.log.push(`:: You retrieve your d${diePair[0].sides}.`);
+                this.monsterAnim = { mode: "kill", startFrame: this.frames };
             } else {
                 this.log.push(":: " + nonLethalDamage(diePair[1], monster));
                 this.log.push(`:: It slinks off into the darkness with your d${diePair[0].sides}.`);
+                this.monsterAnim = { mode: "run", startFrame: this.frames };
             }
             this.monsterIdx++;
         }
@@ -176,6 +205,12 @@ export class StatePlaying implements GameState {
     }
 
     useItem(index: number) {
+        if (this.coverMode.type === "applyingItem") {
+            // quit applying
+            this.coverMode = { type: "none" }
+            return;
+        }
+
         let item = this.items[index];
         if (item === undefined) {
             return;
@@ -245,6 +280,37 @@ export class StatePlaying implements GameState {
         drawStringAlign(ctx, "Items", -ART_HEIGHT - DIE_TRAY_HEIGHT * 2.5, Consts.CHAR_HEIGHT * 0.5, "center");
         ctx.restore();
 
+        let mode = this.mode();
+        if (mode === "monster") {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, ART_WIDTH, ART_HEIGHT);
+            ctx.clip();
+
+            let monster = this.level.monsters[this.monsterIdx];
+            if (this.monsterAnim.mode === "none") {
+                let bobSpeed = 35;
+                let dy = (this.frames % bobSpeed >= bobSpeed / 2) ? -1 : 1;
+                ctx.drawImage(monster.image, 0, 0 + dy, ART_WIDTH, ART_HEIGHT);
+            } else if (this.monsterAnim.mode === "kill") {
+                let dt = this.frames - this.monsterAnim.startFrame;
+                if (dt < MONSTER_FALL_TIME) {
+                    let progress = dt / MONSTER_FALL_TIME;
+                    let t = 1 - (1 - progress) * (1 - progress);
+                    ctx.drawImage(this.level.monsters[this.monsterIdx - 1].image, 0, t * ART_HEIGHT, ART_WIDTH, (1 - t) * ART_HEIGHT);
+                } else {
+                    let progress = (dt - MONSTER_FALL_TIME) / (MONSTER_ANIM_TIME - MONSTER_FALL_TIME);
+                    let t = 1 - (1 - progress) * (1 - progress);
+                    ctx.drawImage(monster.image, (1 - t) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
+                }
+            } else if (this.monsterAnim.mode === "run") {
+                let dt = this.frames - this.monsterAnim.startFrame;
+                ctx.drawImage(this.level.monsters[this.monsterIdx - 1].image, -(dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
+                ctx.drawImage(monster.image, ART_WIDTH - (dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
+            }
+            ctx.restore()
+        }
+
         for (let wig of this.widgets) {
             wig.draw(ctx);
         }
@@ -288,7 +354,7 @@ class WidgetDie extends Widget<StatePlaying> {
     }
 
     onHoverChange(): void {
-        if (this.state.coverMode.type === "none" && this.isHovered) {
+        if (this.state.coverMode.type === "none" && this.isHovered && this.state.mode() === "monster") {
             this.state.coverMode = { type: "hoverDie", index: this.index, used: this.used };
         } else if (this.state.coverMode.type === "hoverDie" && !this.isHovered) {
             this.state.coverMode = { type: "none" };
@@ -371,8 +437,8 @@ class WidgetInfoPanel extends Widget<StatePlaying> {
             }
         } else if (this.state.coverMode.type === "applyingItem") {
             const item = this.state.items[this.state.coverMode.itemIdx];
-            header = "Equipping " + item.name;
-            text = "Click on a die to equip the " + item.name + " to.";
+            header = "Applying " + item.name;
+            text = "Click on a die to apply the " + item.name + " to.";
         } else {
             let mode = this.state.mode();
             if (mode === "monster") {

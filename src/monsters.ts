@@ -1,3 +1,4 @@
+import { Assets } from "./assets.js";
 import { DieMod, DieMods, Item, Items } from "./items.js";
 import { pick, randint } from "./utils.js";
 
@@ -7,38 +8,48 @@ export interface Monster {
     name: string,
     blurb: string,
     bodyParts: string[],
+    image: HTMLImageElement,
 }
 
 export const Monsters = {
     modron: (rank: number): Monster => ({
         defeatedBy: (dice, idx) => dice[idx] % rank === 0,
         itemDropped() {
-            if (Math.random() < 0.7) return null;
+            if (Math.random() < 0.8) return null;
             return Items.toItem(DieMods.modronCore(rank));
         },
         name: ["monodron", "duodron", "tridron", "quadron", "pentadron"][rank - 1],
         blurb: makeModronBlurb(rank),
-        bodyParts: ["chassis", "core", "gears", "wing", "antenna", "plating"]
+        bodyParts: ["chassis", "core", "gears", "wing", "antenna", "plating"],
+        image: [Assets.textures.monodron, Assets.textures.duodron, Assets.textures.tridron, Assets.textures.quadron, Assets.textures.pentadron][rank - 1]
     }),
-    dragon: (heads: number): Monster => ({
-        defeatedBy: (dice, idx) => dice[idx] === heads,
-        itemDropped: () => null,
-        name: ["zero?!", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][heads] + "-headed dragon",
-        blurb: `Defeated by the number ${heads}.\n\nDragonologists INSIST on calling garden-variety dragons "one-headed dragons." Dragonologists are no fun at parties.`,
-        bodyParts: ["eye", "head", "heart", "wing", "neck"]
-    }),
+    dragon: (heads: number): Monster => {
+        let blurb = `Defeated by the number ${heads}.\n\nDragonologists INSIST on calling garden-variety dragons "one-headed dragons." Dragonologists are no fun at parties.`;
+        if (heads != 1) {
+            blurb += `\n\nEach of the dragon's heads is in a fierce custody battle for all the other ones, so only one is allowed to appear onscreen at a time.`
+        }
+        return {
+            defeatedBy: (dice, idx) => dice[idx] === heads,
+            itemDropped: () => null,
+            name: ["zero?!", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][heads] + "-headed dragon",
+            blurb,
+            bodyParts: ["eye", "head", "heart", "wing", "neck"],
+            image: Assets.textures.dragon
+        }
+    },
     highdra: (): Monster => ({
         defeatedBy(dice, idx) {
             const max = Math.max(...dice);
             return dice[idx] === max;
         },
         itemDropped() {
-            if (Math.random() < 0.2) return null;
+            if (Math.random() < 0.5) return null;
             return Items.toItem(DieMods.highdraHead());
         },
         name: "high-dra",
         blurb: "Defeated by your highest die.\n\nThe high-dra is a cousin to the pi-dra. Pi-dras were hunted to extinction in 754 I.E. after people got sick of dealing with the points they left floating everywhere.",
         bodyParts: ["head", "other head", "other other head"],
+        image: Assets.textures.ninja,
     }),
     pirate: (threshold: number): Monster => ({
         defeatedBy(dice, idx) {
@@ -63,43 +74,38 @@ export const Monsters = {
         name: ["birate", "trirate"][threshold - 2],
         blurb: `Defeated by a number you have ${threshold} or more of.\n\nMost pirates were driven out of work during 754 I.E.`
             + ` Interestingly enough, although pirates were human, birates and trirates are actually fungi that perfectly resemble humans.`,
-        bodyParts: ["eye patch", "hook hand", "peg leg", "grog"]
+        bodyParts: ["eye patch", "hook hand", "peg leg", "grog"],
+        image: Assets.textures.ninja,
     }),
     goblin: (): Monster => ({
         defeatedBy(dice, idx) {
             let roll = dice[idx];
-            for (let i = 2; i <= Math.ceil(Math.sqrt(roll)); i++) {
-                if (roll % i === 0) {
-                    return true;
-                }
-            }
-            return false;
+            return roll !== 1 && !isPrime(roll);
         },
         itemDropped() {
-            if (Math.random() < 0.6) return null;
+            if (Math.random() < 0.7) return null;
             return Items.luckPotion();
         },
         name: "cobble goblin",
-        blurb: "Defeated by composite numbers. 1 is not composite.\n\nIt's this little goblin's first day on dungeon duty, and all it could find was this patchy armor that lets composite numbers through. Poor thing.",
-        bodyParts: ["leg", "arm", "head", "nose", "eye", "pointy ear"]
+        blurb: "Defeated by composite numbers. 1 is not composite.\n\nIt's this little goblin's first day on dungeon duty, and all it could find was this patchy armor."
+            + "It barely fits, and it lets composite numbers straight through. Poor thing.",
+        bodyParts: ["leg", "arm", "head", "nose", "hat"],
+        image: Assets.textures.cobbleGoblin
     }),
     goblinLord: (): Monster => ({
         defeatedBy(dice, idx) {
             let roll = dice[idx];
-            for (let i = 2; i <= Math.ceil(Math.sqrt(roll)); i++) {
-                if (roll % i === 0) {
-                    return false;
-                }
-            }
-            return true;
+            return roll !== 1 && isPrime(roll);
         },
         itemDropped() {
-            if (Math.random() < 0.6) return null;
+            if (Math.random() < 0.7) return null;
             return Items.greaterLuckPotion();
         },
         name: "prime goblin",
-        blurb: "Defeated by prime numbers. 1 is not prime.\n\nAt some point, the idea of giving a prime goblin a cobble goblin's armor was raised, but the discussion fell apart. The goblins couldn't decide what to do with the number 1, given most of them can't count much higher.",
-        bodyParts: ["leg", "arm", "head", "nose", "eye", "pointy ear"]
+        blurb: "Defeated by prime numbers. 1 is not prime.\n\nAt some point, the idea of giving a prime goblin a cobble goblin's armor was raised, but the discussion fell apart."
+            + "The goblins couldn't decide what to do with the number 1, given most of them can't count much higher.",
+        bodyParts: ["leg", "arm", "head", "nose", "hat"],
+        image: Assets.textures.goblinLord,
     }),
     gelatinousSquare: (): Monster => ({
         defeatedBy(dice, idx) {
@@ -108,12 +114,13 @@ export const Monsters = {
             return Math.abs((sqrt - Math.round(sqrt))) < 0.0001;
         },
         itemDropped() {
-            if (Math.random() < 0.6) return null;
+            if (Math.random() < 0.7) return null;
             return Items.healingPotion();
         },
         name: "gelatinous square",
         blurb: "Defeated by square numbers.\n\nJust a plane ol' gelatinous square.",
         bodyParts: ["gel", "gelatin", "corner", "edge"],
+        image: Assets.textures.gelatinousSquare,
     }),
     gelatinousCube: (): Monster => ({
         defeatedBy(dice, idx) {
@@ -122,14 +129,14 @@ export const Monsters = {
             return Math.abs((cbrt - Math.round(cbrt))) < 0.0001;
         },
         itemDropped() {
-            if (Math.random() < 0.6) return null;
+            if (Math.random() < 0.7) return null;
             return Items.greaterHealingPotion();
         },
         name: "gelatinous cube",
         blurb: 'Defeated by cubic numbers.\n\nIn the old days, gelatinous cubes used to be farmed for their gelatin. It was marketed as a "cruelty-free" or vegetarian gelatin, saving those poor pigs from getting their joints melted down. For some reason, people still bought it.',
         bodyParts: ["gel", "gelatin", "corner", "edge", "face"],
+        image: Assets.textures.gelatinousCube,
     })
-
 }
 
 function makeModronBlurb(rank: number): string {
@@ -147,6 +154,15 @@ function makeModronBlurb(rank: number): string {
         'As the popular jumprope rhyme goes: "Five, Ten, Fifteen, Twenty. Never leave the-- OH GOD A PENTADRON RUN"'
     ][rank - 1];
     return `${defeat}\n\n${message}`;
+}
+
+function isPrime(n: number) {
+    for (let i = 2; i <= Math.ceil(Math.sqrt(n)) && i < n; i++) {
+        if (n % i === 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
 export const MonstersAndDifficulties: Array<{ monster: () => Monster, difficulty: number }> = [

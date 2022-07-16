@@ -6,6 +6,7 @@ export interface DieMod {
     name: string,
     short: string,
     description: string,
+    flavor: string,
 }
 
 export const DieMods = {
@@ -16,7 +17,8 @@ export const DieMods = {
             },
             name: "Modron Core " + rank,
             short: "=" + rank,
-            description: `Makes the die always roll ${rank}. Due to Primus' divine influence, a modron's core suppresses probability near itself.`
+            description: `Makes the die always roll ${rank}.`,
+            flavor: `Due to Primus' divine influence, a modron's core suppresses probability near itself.`
         }
     },
     highdraHead(): DieMod {
@@ -26,7 +28,8 @@ export const DieMods = {
             },
             name: "High-dra Head",
             short: "MAX",
-            description: "Makes the die always roll its highest possible value. High-dra venom is sometimes sold in irreputable taverns for its ... strengthening effects."
+            description: "Makes the die always roll its highest possible value.",
+            flavor: "High-dra venom is sometimes sold in irreputable taverns for its ... strengthening effects."
         }
     },
     nloon(multiplier: number, metal: "silver" | "gold"): DieMod {
@@ -41,8 +44,7 @@ export const DieMods = {
             // Wikipedia and my spritesheet disagree here.
             short = "\xbd" + multiplier;
         }
-        description += " Doubloons and trebloons are actually useless as currency, due to their tendency to mess up ledgers and accounting books.";
-        let coinType = ["Doubloon", "Trebloon"][multiplier - 2];
+        let coinType = ["doubloon", "trebloon"][multiplier - 2];
         return {
             modifyRoll(die, roll) {
                 if (metal === "gold") {
@@ -51,9 +53,10 @@ export const DieMods = {
                     return randint(1, die.sides * multiplier + 1);
                 }
             },
-            name: titleCase(metal) + " " + coinType,
+            name: metal + " " + coinType,
             short,
-            description
+            description,
+            flavor: "Doubloons and trebloons are actually useless as currency, due to their tendency to mess up ledgers and accounting books.",
         }
     }
 }
@@ -113,7 +116,7 @@ export const Items = {
         return {
             name: mod.name,
             short: mod.short,
-            description: mod.description,
+            description: "Equipment. " + mod.description + "\n\n" + mod.flavor,
             data: {
                 type: "mod",
                 dieMod: mod,

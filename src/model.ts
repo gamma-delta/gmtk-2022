@@ -30,7 +30,7 @@ export class Die {
         if (this.mod !== null) {
             roll = this.mod.modifyRoll(this, roll);
         }
-        return Math.max(1, Math.min(99, roll));
+        return Math.max(0, Math.min(99, roll));
     }
 
     draw(x: number, y: number, roll: number, ctx: CanvasRenderingContext2D) {
@@ -101,10 +101,10 @@ export class Level {
             let monsterManual = MonstersAndDifficulties.slice();
             monsterManual.sort((a, b) => b.difficulty - a.difficulty + Math.random() - 0.5);
 
-            let difficultyRemaining = depth + 4 * 2;
-            let len = Math.max(3, Math.min(9, randint(1, depth + 1)));
+            let difficultyRemaining = depth * 2 + 4;
+            let len = Math.max(3, Math.min(9, randint(Math.floor(depth / 2), depth * 2)));
             while (monsters.length < len) {
-                let diff = randint(1, difficultyRemaining + 1);
+                let diff = randint(Math.ceil(difficultyRemaining / 3), difficultyRemaining + 1);
                 for (let i = 0; i < monsterManual.length; i++) {
                     let { monster: monsterFactory, difficulty } = monsterManual[i];
                     if (difficulty <= diff) {

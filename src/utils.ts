@@ -74,7 +74,32 @@ export function drawString(ctx: CanvasRenderingContext2D, s: string, x: number, 
         }
     }
 }
+export function drawStringAlign(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, align: "left" | "center" | "right", color: string = Consts.PENCIL_COLOR) {
+    fontCanvasCtx.fillStyle = color;
+    fontCanvasCtx.fillRect(0, 0, Consts.CHAR_WIDTH * 16, Consts.CHAR_HEIGHT * 16);
+    fontCanvasCtx.globalCompositeOperation = "destination-in";
+    fontCanvasCtx.drawImage(Assets.textures.font, 0, 0);
+    fontCanvasCtx.globalCompositeOperation = "source-over";
+
+    let dx = 0;
+    if (align === "center") {
+        dx = -s.length / 2;
+    } else if (align === "right") {
+        dx = - s.length;
+    }
+    for (let i = 0; i < s.length; i++) {
+        let cp = s.codePointAt(i)!;
+        let sx = cp % 16;
+        let sy = Math.floor(cp / 16);
+
+        ctx.drawImage(fontCanvas, sx * Consts.CHAR_WIDTH, sy * Consts.CHAR_HEIGHT,
+            Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT,
+            x + Math.floor((i + dx) * (Consts.CHAR_WIDTH + Consts.KERNING_X)), y,
+            Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT);
+
+    }
+}
 
 export function titleCase(s: string): string {
-    return s.replace(/\w\S*/, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase())
+    return s.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase())
 }

@@ -1,5 +1,5 @@
 import { DieMod, DieMods } from "./model.js";
-import { pick } from "./utils.js";
+import { pick, randint } from "./utils.js";
 
 export interface Monster {
     defeatedBy(dice: number[], idx: number): boolean;
@@ -36,7 +36,7 @@ export const Monsters = {
             if (Math.random() < 0.2) return null;
             return DieMods.highdraHead();
         },
-        name: "High-dra",
+        name: "high-dra",
         blurb: "Defeated by your highest die.\n\nThe high-dra is a cousin to the pi-dra. Pi-dras were hunted to extinction in 754 I.E. after people got sick of dealing with the points they left floating everywhere.",
         bodyParts: ["head", "other head", "other other head"],
     }),
@@ -75,9 +75,9 @@ export const Monsters = {
             return false;
         },
         itemDropped: () => null,
-        name: "Cobble Goblin",
+        name: "cobble goblin",
         blurb: "Defeated by composite numbers. 1 is not composite.\n\nIt's this little goblin's first day on dungeon duty, and all it could find was this patchy armor that lets composite numbers through. Poor thing.",
-        bodyParts: ["leg", "arm", "heart", "nose", "eye", "pointy ear"]
+        bodyParts: ["leg", "arm", "head", "nose", "eye", "pointy ear"]
     }),
     goblinLord: (): Monster => ({
         defeatedBy(dice, idx) {
@@ -90,10 +90,33 @@ export const Monsters = {
             return true;
         },
         itemDropped: () => null,
-        name: "Prime Goblin",
-        blurb: "Defeated by prime numbers. 1 is not prime.\n\nAt some point, the idea of giving a goblin lord a cobble goblin's armor was raised, but the discussion fell apart. The goblins couldn't decide what to do with the number 1, given most of them can't count any higher.",
-        bodyParts: ["leg", "arm", "heart", "nose", "eye", "pointy ear"]
+        name: "prime goblin",
+        blurb: "Defeated by prime numbers. 1 is not prime.\n\nAt some point, the idea of giving a prime goblin a cobble goblin's armor was raised, but the discussion fell apart. The goblins couldn't decide what to do with the number 1, given most of them can't count much higher.",
+        bodyParts: ["leg", "arm", "head", "nose", "eye", "pointy ear"]
+    }),
+    gelatinousSquare: (): Monster => ({
+        defeatedBy(dice, idx) {
+            let roll = dice[idx];
+            let sqrt = Math.sqrt(roll);
+            return Math.abs((sqrt - Math.round(sqrt))) < 0.0001;
+        },
+        itemDropped: () => null,
+        name: "gelatinous square",
+        blurb: "Defeated by square numbers.\n\nJust a plane ol' gelatinous square.",
+        bodyParts: ["gel", "gelatin", "corner", "edge"],
+    }),
+    gelatinousCube: (): Monster => ({
+        defeatedBy(dice, idx) {
+            let roll = dice[idx];
+            let cbrt = Math.cbrt(roll);
+            return Math.abs((cbrt - Math.round(cbrt))) < 0.0001;
+        },
+        itemDropped: () => null,
+        name: "gelatinous cube",
+        blurb: 'Defeated by cubic numbers.\n\nIn the old days, gelatinous cubes used to be farmed for their gelatin. It was marketed as a "cruelty-free" or vegetarian gelatin, saving those poor pigs from getting their joints melted down. For some reason, people still bought it.',
+        bodyParts: ["gel", "gelatin", "corner", "edge", "face"],
     })
+
 }
 
 function makeModronBlurb(rank: number): string {
@@ -112,3 +135,19 @@ function makeModronBlurb(rank: number): string {
     ][rank - 1];
     return `${defeat}\n\n${message}`;
 }
+
+export const MonstersAndDifficulties: Array<{ monster: () => Monster, difficulty: number }> = [
+    { monster: () => Monsters.modron(1), difficulty: 1 },
+    { monster: () => Monsters.goblin(), difficulty: 2 },
+    { monster: () => Monsters.modron(2), difficulty: 2 },
+    { monster: () => Monsters.highdra(), difficulty: 3 }, { monster: () => Monsters.highdra(), difficulty: 3 }, { monster: () => Monsters.highdra(), difficulty: 3 },
+    { monster: () => Monsters.goblinLord(), difficulty: 3 }, { monster: () => Monsters.goblinLord(), difficulty: 3 }, { monster: () => Monsters.goblinLord(), difficulty: 3 },
+    { monster: () => Monsters.modron(3), difficulty: 4 },
+    { monster: () => Monsters.modron(4), difficulty: 5 },
+    { monster: () => Monsters.gelatinousSquare(), difficulty: 6 }, { monster: () => Monsters.gelatinousSquare(), difficulty: 6 },
+    { monster: () => Monsters.modron(5), difficulty: 6 },
+    { monster: () => Monsters.gelatinousCube(), difficulty: 7 }, { monster: () => Monsters.gelatinousCube(), difficulty: 7 },
+    { monster: () => Monsters.pirate(2), difficulty: 8 },
+    { monster: () => Monsters.dragon(randint(1, 11)), difficulty: 10 },
+    { monster: () => Monsters.pirate(3), difficulty: 12 },
+]

@@ -12,7 +12,7 @@ const Consts = {
     BG_COLOR: "#f0ffff",
     PINK_LINE_COLOR: "#f4887c",
     BLUE_LINE_COLOR: "#acd8f1",
-    PENCIL_COLOR: "#696a6a",
+    PENCIL_COLOR: "#494d47",
     HORIZ_LINE_SPACING: CHAR_HEIGHT + KERNING_Y,
     VERT_LINE_OFFSET: CHAR_WIDTH * 2,
 }

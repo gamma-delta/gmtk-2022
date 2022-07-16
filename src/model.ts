@@ -1,6 +1,6 @@
 import { Assets } from "./assets.js";
 import { Consts } from "./consts.js";
-import { Monster, Monsters } from "./monsters.js";
+import { Monster, Monsters, MonstersAndDifficulties } from "./monsters.js";
 import { drawString, randint, titleCase } from "./utils.js";
 
 const dieNumberWidth = 4;
@@ -144,14 +144,34 @@ export class Level {
         // temp
         let monsters = [];
         if (depth === 0) {
+            // Give a tutorial level
             monsters = [
                 Monsters.modron(1),
                 Monsters.goblin(),
                 Monsters.modron(2),
             ]
         } else {
-            // fuck you
-            monsters = new Array(depth).fill(Monsters.pirate(2));
+            let monsterManual = MonstersAndDifficulties.slice();
+            monsterManual.sort((a, b) => b.difficulty - a.difficulty + Math.random() - 0.5);
+
+            let difficultyRemaining = depth + 4 * 2;
+            let len = Math.max(3, Math.min(9, randint(1, depth + 1)));
+            while (monsters.length < len) {
+                let diff = randint(1, difficultyRemaining + 1);
+                for (let i = 0; i < monsterManual.length; i++) {
+                    let { monster: monsterFactory, difficulty } = monsterManual[i];
+                    if (difficulty <= diff) {
+                        monsters.push({ monster: monsterFactory(), difficulty });
+                        difficultyRemaining -= difficulty;
+                        break;
+                    }
+                }
+                if (difficultyRemaining <= 0) {
+                    difficultyRemaining = depth;
+                }
+            }
+            monsters.sort((a, b) => a.difficulty - b.difficulty + (Math.random() - 0.5) * 3.5);
+            monsters = monsters.map(m => m.monster);
         }
         return new Level(monsters);
     }
@@ -171,7 +191,7 @@ export const PlayerClasses: PlayerClass[] = [
         name: "Fighter",
         description: "",
         difficulty: 1,
-        dice: [new Die(6), new Die(6), new Die(6), new Die(8)],
+        dice: [new Die(4), new Die(6), new Die(6), new Die(6), new Die(8)],
         items: [
             DieMods.nloon(2, "silver")
         ]

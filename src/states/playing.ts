@@ -3,13 +3,14 @@ import { InputState } from "../inputs.js";
 import { Die, DieMod, Level, PlayerClasses } from "../model.js";
 import { DrawInfo, GameState } from "../states.js";
 import { lethalDamage, nonLethalDamage } from "../strings.js";
-import { drawString, splitIntoWordsWithLen, titleCase } from "../utils.js";
+import { drawString, drawStringAlign, pick, splitIntoWordsWithLen, titleCase } from "../utils.js";
 import { Widget } from "../widget.js";
+import { StateLose } from "./lose.js";
 
 const ART_WIDTH = 240;
 const ART_HEIGHT = 240;
 const INFO_BOX_HEIGHT = Consts.CHAR_WIDTH * 23.75;
-const DIE_TRAY_HEIGHT = 40;
+const DIE_TRAY_HEIGHT = 48;
 const INFO_BOX_CHAR_WIDTH = 48;
 
 export class StatePlaying implements GameState {
@@ -28,6 +29,8 @@ export class StatePlaying implements GameState {
     static MAX_DIE_COUNT = 8;
 
     widgets: Widget<StatePlaying>[];
+    panelMode: PanelMode = "monster";
+    treasureChest: Die;
 
     static start() {
         const startLog = [
@@ -55,18 +58,27 @@ export class StatePlaying implements GameState {
         for (let used of [false, true]) {
             for (let i = 0; i < StatePlaying.MAX_DIE_COUNT; i++) {
                 let x = Consts.VERT_LINE_OFFSET + Consts.CHAR_WIDTH + i * (Die.TEX_WIDTH + Consts.CHAR_WIDTH);
-                let y = ART_HEIGHT + 8 + (used ? DIE_TRAY_HEIGHT : 0);
+                let y = ART_HEIGHT + 16 + (used ? DIE_TRAY_HEIGHT : 0);
                 this.widgets.push(new WidgetDie(this, x, y, Die.TEX_WIDTH, Die.TEX_HEIGHT, i, used));
             }
         }
         this.widgets.push(new WidgetInfoPanel(this, ART_WIDTH, 0, 999999, ART_WIDTH));
         this.log = log;
+
+        this.treasureChest = new Die(pick([4, 6, 8, 10, 12, 20]));
     }
 
     update(controls: InputState): GameState | null {
         for (let wig of this.widgets) {
             wig.update(controls);
         }
+
+        if (this.monsterIdx >= this.level.monsters.length) {
+            this.panelMode = "treasureChest";
+        } else if (this.dice.length === 0) {
+            this.panelMode = "lose";
+        }
+
         return this.swapState;
     }
 
@@ -89,13 +101,23 @@ export class StatePlaying implements GameState {
     }
 
     clickInfoPanel() {
-        if (this.monsterIdx >= this.level.monsters.length) {
-            this.log.push(":: You descend deeper into the dungeon.");
-
+        if (this.panelMode === "treasureChest") {
             let nextLevel = Level.generateFromDepth(this.depth + 1);
             let dice = this.dice.map(d => d[0]);
             dice.push(...this.usedDice.map(d => d[0]));
+            if (dice.length < StatePlaying.MAX_DIE_COUNT) {
+                dice.push(this.treasureChest);
+                this.log.push(`:: You take the d${this.treasureChest.sides}.`);
+            } else {
+                this.log.push(`:: You had no room for the d${this.treasureChest.sides}, so you left it there.`);
+            }
+            this.log.push(`:: You descend the stairs deeper into the dungeon, down to floor ${this.depth + 2}.`);
             this.swapState = new StatePlaying(nextLevel, this.depth + 1, dice, this.items, this.log);
+        } else if (this.panelMode === "lose") {
+            this.swapState = new StateLose({
+                depth: this.depth,
+                diedTo: this.level.monsters[this.monsterIdx],
+            });
         }
     }
 
@@ -128,8 +150,8 @@ export class StatePlaying implements GameState {
 
         ctx.save();
         ctx.rotate(-Math.PI / 2);
-        drawString(ctx, "Ready", -ART_HEIGHT - DIE_TRAY_HEIGHT, Consts.CHAR_HEIGHT * 0.5);
-        drawString(ctx, "Used", -ART_HEIGHT - DIE_TRAY_HEIGHT * 2 + Consts.CHAR_WIDTH * 0.5, Consts.CHAR_HEIGHT * 0.5);
+        drawStringAlign(ctx, "Ready", -ART_HEIGHT - DIE_TRAY_HEIGHT / 2, Consts.CHAR_HEIGHT * 0.5, "center");
+        drawStringAlign(ctx, "Used", -ART_HEIGHT - DIE_TRAY_HEIGHT * 1.5, Consts.CHAR_HEIGHT * 0.5, "center");
         ctx.restore();
 
         for (let wig of this.widgets) {
@@ -185,7 +207,9 @@ class WidgetDie extends Widget<StatePlaying> {
         die.draw(this.x, this.y, roll, ctx);
 
         let sideStr = `d${die.sides}`;
-        drawString(ctx, sideStr, this.x + Die.TEX_WIDTH / 2 - (sideStr.length / 2 * Consts.CHAR_WIDTH), this.y + Die.TEX_HEIGHT + 4);
+        drawStringAlign(ctx, sideStr, this.x + Die.TEX_WIDTH / 2, this.y - Consts.CHAR_HEIGHT - 4, "center");
+        if (die.mod !== null)
+            drawStringAlign(ctx, die.mod.short, this.x + Die.TEX_WIDTH / 2, this.y + Die.TEX_HEIGHT + 4, "center");
     }
 }
 
@@ -198,10 +222,27 @@ class WidgetInfoPanel extends Widget<StatePlaying> {
         this.state.clickInfoPanel();
     }
     draw(ctx: CanvasRenderingContext2D): void {
-        const monster = this.state.level.monsters[this.state.monsterIdx];
-        let header = (monster !== undefined) ? titleCase(monster.name) : `Floor ${this.state.depth + 1} defeated!`;
-        let text = (monster !== undefined) ? monster.blurb : `Click here to go to the next floor`;
+        let header;
+        let text;
+        if (this.state.panelMode === "monster") {
+            const monster = this.state.level.monsters[this.state.monsterIdx];
+            header = titleCase(monster.name);
+            let next = [];
+            for (let i = this.state.monsterIdx + 1; i < this.state.level.monsters.length; i++) {
+                next.push(this.state.level.monsters[i].name);
+            }
+            next.push("treasure chest");
+            text = monster.blurb + "\n\nComing up: " + next.join(", ") + ".";
+        } else if (this.state.panelMode === "treasureChest") {
+            header = `Floor ${this.state.depth + 1} defeated!`
+            text = `You found a treasure chest with a d${this.state.treasureChest.sides} in it! Click here to claim it and go to the next floor.`;
+        } else {
+            header = "You died!";
+            text = `You were defenseless against the ${this.state.level.monsters[this.state.monsterIdx].name}.\n\nClick here to see your stats.`;
+        }
         drawString(ctx, header, ART_WIDTH + Consts.CHAR_WIDTH / 2, Consts.CHAR_HEIGHT + 6, INFO_BOX_CHAR_WIDTH, Consts.PINK_LINE_COLOR);
         drawString(ctx, text, ART_WIDTH + Consts.CHAR_WIDTH / 2, Consts.CHAR_HEIGHT * 3, INFO_BOX_CHAR_WIDTH);
     }
 }
+
+type PanelMode = "monster" | "treasureChest" | "lose";

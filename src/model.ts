@@ -1,15 +1,7 @@
 import { Assets } from "./assets.js";
 import { Consts } from "./consts.js";
 import { Monster, Monsters } from "./monsters.js";
-import { drawString, randint } from "./utils.js";
-
-export class Player {
-    dice: Die[];
-
-    constructor(dice: Die[]) {
-        this.dice = dice;
-    }
-}
+import { drawString, randint, titleCase } from "./utils.js";
 
 const dieNumberWidth = 4;
 const dieNumberHeight = 7;
@@ -23,7 +15,7 @@ const dieNumberCanvas = (() => {
 const dieCanvasCtx = dieNumberCanvas.getContext("2d")!;
 export class Die {
     sides: number;
-    mods: DieMod[] = [];
+    mod: DieMod | null = null;
 
     static TEX_WIDTH = 18;
     static TEX_HEIGHT = 18;
@@ -34,8 +26,8 @@ export class Die {
 
     roll(): number {
         let roll = randint(1, this.sides + 1);
-        for (let mod of this.mods) {
-            roll = mod(roll);
+        if (this.mod !== null) {
+            roll = this.mod.modifyRoll(this, roll);
         }
         return Math.max(1, Math.min(99, roll));
     }
@@ -88,7 +80,57 @@ export class Die {
 }
 
 export interface DieMod {
-    (roll: number): number;
+    modifyRoll(die: Die, roll: number): number,
+    name: string,
+    short: string,
+    description: string,
+}
+
+export const DieMods = {
+    modronCore(rank: number): DieMod {
+        return {
+            modifyRoll(die, roll) {
+                return rank;
+            },
+            name: "Modron Core " + rank,
+            short: "=" + rank,
+            description: `Makes the die always roll ${rank}. Due to Primus' divine influence, a modron's core suppresses probability near itself.`
+        }
+    },
+    highdraHead(): DieMod {
+        return {
+            modifyRoll(die, roll) {
+                return die.sides;
+            },
+            name: "High-dra Head",
+            short: "MAX",
+            description: "Makes the die always roll its highest possible value."
+        }
+    },
+    nloon(multiplier: number, metal: "silver" | "gold"): DieMod {
+        let description;
+        let short;
+        if (metal === "gold") {
+            description = `Multiplies the die roll by ${multiplier}.`;
+            short = "$" + multiplier;
+        } else {
+            description = `Makes the die act as if it had ${multiplier}x as many sides.`;
+            short = "c" + multiplier;
+        }
+        let coinType = ["Doubloon", "Trebloon"][multiplier - 2];
+        return {
+            modifyRoll(die, roll) {
+                if (metal === "gold") {
+                    return roll * multiplier;
+                } else {
+                    return randint(1, die.sides * multiplier + 1);
+                }
+            },
+            name: coinType + " " + titleCase(metal),
+            short,
+            description
+        }
+    }
 }
 
 export class Level {
@@ -100,32 +142,49 @@ export class Level {
 
     static generateFromDepth(depth: number): Level {
         // temp
-        const monsters = [
-            Monsters.modron(1),
-            Monsters.modron(2),
-            Monsters.modron(3),
-        ];
+        let monsters = [];
+        if (depth === 0) {
+            monsters = [
+                Monsters.modron(1),
+                Monsters.goblin(),
+                Monsters.modron(2),
+            ]
+        } else {
+            // fuck you
+            monsters = new Array(depth).fill(Monsters.pirate(2));
+        }
         return new Level(monsters);
     }
 }
 
-export class LevelHarness {
-    player: Player;
-    level: Level;
-
-    rolledDice: number[];
-    // Indices of used-up dice
-    usedDice: Set<number>;
-    eatenDice: Set<number>;
-
-    constructor(player: Player, level: Level) {
-        this.player = player;
-        this.level = level;
-
-        this.rolledDice = this.player.dice.map(die => die.roll());
-        this.usedDice = new Set();
-        this.eatenDice = new Set();
-    }
+// Defines your starting inventory
+export interface PlayerClass {
+    name: string,
+    description: string,
+    difficulty: number,
+    dice: Die[],
+    items: DieMod[],
 }
 
-
+export const PlayerClasses: PlayerClass[] = [
+    {
+        name: "Fighter",
+        description: "",
+        difficulty: 1,
+        dice: [new Die(6), new Die(6), new Die(6), new Die(8)],
+        items: [
+            DieMods.nloon(2, "silver")
+        ]
+    },
+    {
+        name: "Cleric",
+        description: "",
+        difficulty: 1,
+        dice: [new Die(4), new Die(4), new Die(4), new Die(4), new Die(4)],
+        items: [
+            DieMods.nloon(2, "gold"),
+            DieMods.nloon(3, "gold"),
+            DieMods.modronCore(5),
+        ]
+    }
+]

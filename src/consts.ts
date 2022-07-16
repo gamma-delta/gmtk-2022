@@ -5,7 +5,7 @@ const KERNING_Y = 2;
 const Consts = {
     fps: 30,
 
-    CANVAS_SCALE: 3,
+    CANVAS_SCALE: 1,
 
     CHAR_WIDTH, CHAR_HEIGHT, KERNING_X, KERNING_Y,
 

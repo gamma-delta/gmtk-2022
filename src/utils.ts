@@ -9,6 +9,10 @@ export function randint(min: number, max: number): number {
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min)) + min;
 }
+export function pick<T>(arr: T[]): T {
+    let idx = randint(0, arr.length);
+    return arr[idx];
+}
 
 const wordSplitter = /(\n)|\s+/;
 
@@ -69,4 +73,8 @@ export function drawString(ctx: CanvasRenderingContext2D, s: string, x: number, 
 
         }
     }
+}
+
+export function titleCase(s: string): string {
+    return s.replace(/\w\S*/, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase())
 }

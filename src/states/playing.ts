@@ -16,8 +16,9 @@ const DIE_TRAY_HEIGHT = Math.round((400 - ART_HEIGHT) / 3 / 2) * 2;
 const INFO_BOX_CHAR_WIDTH = 48;
 
 const DIE_ROLL_TIME = 20;
-const MONSTER_ANIM_TIME = 20;
-const MONSTER_FALL_TIME = 8;
+const MONSTER_ANIM_TIME = 40;
+const MONSTER_FALL_TIME = 12;
+const MONSTER_ENTER_TIME = 20;
 
 const ITEM_SIZE = 20;
 
@@ -38,7 +39,7 @@ export class StatePlaying implements GameState {
 
     widgets: Widget<StatePlaying>[];
     coverMode: CoverMode = { type: "none" };
-    treasureChest: Die;
+    treasureChest: Die | null;
 
     frames: number = 0;
     monsterAnim: { mode: "none" } | { mode: "kill" | "run", startFrame: number }
@@ -81,14 +82,14 @@ export class StatePlaying implements GameState {
         this.widgets.push(new WidgetInfoPanel(this, ART_WIDTH, 0, 999999, ART_WIDTH));
         this.log = log;
 
-        this.treasureChest = new Die(pick([4, 6, 8, 10, 12, 20]));
+        this.treasureChest = (Math.random() < 0.5) ? new Die(pick([4, 6, 8, 10, 12, 20])) : null;
     }
 
     mode(): "monster" | "treasureChest" | "lost" {
-        if (this.dice.length === 0) {
-            return "lost";
-        } else if (this.monsterIdx >= this.level.monsters.length) {
+        if (this.monsterIdx >= this.level.monsters.length) {
             return "treasureChest";
+        } else if (this.dice.length === 0) {
+            return "lost";
         } else {
             return "monster";
         }
@@ -192,9 +193,11 @@ export class StatePlaying implements GameState {
             let nextLevel = Level.generateFromDepth(this.depth + 1);
             let dice = this.dice.map(d => d[0]);
             dice.push(...this.usedDice.map(d => d[0]));
-            if (dice.length < StatePlaying.MAX_DIE_COUNT) {
+            if (this.treasureChest === null) {
+                this.log.push(`:: The chest was empty! Bad luck.`);
+            } else if (dice.length < StatePlaying.MAX_DIE_COUNT) {
                 dice.push(this.treasureChest);
-                this.log.push(`:: You take the d${this.treasureChest.sides}.`);
+                this.log.push(`:: You take the d${this.treasureChest.sides} from the chest.`);
             } else {
                 this.log.push(`:: You had no room for the d${this.treasureChest.sides} in the chest, so you left it there.`);
             }
@@ -287,9 +290,10 @@ export class StatePlaying implements GameState {
         let mode = this.mode();
         let thisImage = null;
         let prevImage = null;
+        let audio = null;
         let animMode: "kill" | "run" | "bob" | "none" = "none";
         let dt = -1;
-        if (mode === "monster") {
+        if (mode === "monster" || mode === "lost") {
             let monster = this.level.monsters[this.monsterIdx];
             if (this.monsterAnim.mode === "none") {
                 thisImage = monster.image;
@@ -297,16 +301,34 @@ export class StatePlaying implements GameState {
             } else if (this.monsterAnim.mode === "kill" || this.monsterAnim.mode === "run") {
                 dt = this.frames - this.monsterAnim.startFrame;
                 thisImage = monster.image;
-                prevImage = this.level.monsters[this.monsterIdx - 1].image;
+                const prevMonster = this.level.monsters[this.monsterIdx - 1];
+                prevImage = prevMonster.image;
                 animMode = this.monsterAnim.mode;
+
+                if (dt === 1) {
+                    audio = (this.monsterAnim.mode === "kill") ? prevMonster.dieSound : prevMonster.winSound;
+                } else if (dt === MONSTER_ENTER_TIME) {
+                    audio = (mode === "lost") ? monster.winSound : monster.enterSound;
+                }
             }
         } else if (mode === "treasureChest") {
             thisImage = Assets.textures.treasureChest;
             animMode = this.monsterAnim.mode;
             if (this.monsterAnim.mode !== "none") {
                 dt = this.frames - this.monsterAnim.startFrame;
-                prevImage = this.level.monsters[this.monsterIdx - 1].image;
+                const prevMonster = this.level.monsters[this.monsterIdx - 1];
+                prevImage = prevMonster.image;
+
+                if (dt === 1) {
+                    audio = (this.monsterAnim.mode === "kill") ? prevMonster.dieSound : prevMonster.winSound;
+                } else if (dt === MONSTER_ENTER_TIME) {
+                    audio = Assets.audio.treasureChest;
+                }
             }
+        }
+
+        if (this.frames === 1) {
+            audio = this.level.monsters[this.monsterIdx].enterSound;
         }
 
         ctx.save();
@@ -324,8 +346,8 @@ export class StatePlaying implements GameState {
                 let progress = dt / MONSTER_FALL_TIME;
                 let t = 1 - (1 - progress) * (1 - progress);
                 ctx.drawImage(prevImage, 0, t * ART_HEIGHT, ART_WIDTH, (1 - t) * ART_HEIGHT);
-            } else {
-                let progress = (dt - MONSTER_FALL_TIME) / (MONSTER_ANIM_TIME - MONSTER_FALL_TIME);
+            } else if (dt > MONSTER_ENTER_TIME) {
+                let progress = (dt - MONSTER_ENTER_TIME) / (MONSTER_ANIM_TIME - MONSTER_ENTER_TIME);
                 let t = 1 - (1 - progress) * (1 - progress);
                 ctx.drawImage(thisImage, (1 - t) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
             }
@@ -334,7 +356,12 @@ export class StatePlaying implements GameState {
             ctx.drawImage(prevImage, -(dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
             ctx.drawImage(thisImage, ART_WIDTH - (dt / MONSTER_ANIM_TIME) * ART_WIDTH, 0, ART_WIDTH, ART_HEIGHT);
         }
-        ctx.restore()
+        ctx.restore();
+
+        if (audio !== null) {
+            audio.playbackRate = 1.0 + (Math.random() - 0.5) * 0.1;
+            audio.play();
+        }
 
         for (let wig of this.widgets) {
             wig.draw(ctx);
@@ -379,7 +406,7 @@ class WidgetDie extends Widget<StatePlaying> {
     }
 
     onHoverChange(): void {
-        if (this.state.coverMode.type === "none" && this.isHovered && this.state.mode() === "monster") {
+        if (this.state.coverMode.type !== "applyingItem" && this.isHovered && this.state.mode() === "monster") {
             this.state.coverMode = { type: "hoverDie", index: this.index, used: this.used };
         } else if (this.state.coverMode.type === "hoverDie" && !this.isHovered) {
             this.state.coverMode = { type: "none" };
@@ -420,7 +447,7 @@ class WidgetItem extends Widget<StatePlaying> {
     }
 
     onHoverChange(): void {
-        if (this.state.coverMode.type === "none" && this.isHovered) {
+        if (this.state.coverMode.type !== "applyingItem" && this.isHovered) {
             this.state.coverMode = { type: "hoverItem", index: this.index };
         } else if (this.state.coverMode.type === "hoverItem" && !this.isHovered) {
             this.state.coverMode = { type: "none" };
@@ -477,7 +504,10 @@ class WidgetInfoPanel extends Widget<StatePlaying> {
                 text = monster.blurb + "\n\nComing up: " + next.join(", ") + ".";
             } else if (mode === "treasureChest") {
                 header = `Floor ${this.state.depth + 1} defeated!`
-                text = `You found a treasure chest with a d${this.state.treasureChest.sides} in it! Click here to claim it and go to the next floor.`;
+                if (this.state.treasureChest !== null)
+                    text = `You found a treasure chest with a d${this.state.treasureChest.sides} in it! Click here to claim it and go to the next floor.`;
+                else
+                    text = `You found a treasure chest, but it was empty! Click here to go to the next floor.`;
             } else {
                 header = "You died!";
                 text = `You were defenseless against the ${this.state.level.monsters[this.state.monsterIdx].name}.\n\nClick here to see your stats.`;

@@ -1,5 +1,5 @@
 import { Assets } from "./assets.js";
-import { Consts } from "./consts.js";
+import { Consts, initAudio } from "./consts.js";
 import { InputState } from "./inputs.js";
 import { GameState } from "./states.js";
 import { StateSplash } from "./states/splash.js";
@@ -39,38 +39,9 @@ export class RollPlayingGame {
         this.state = new StateSplash();
     }
 
-    initAudio() {
-        // Set up audio
-        const anyWindow = (window as any);
-        const AudioContext = anyWindow.AudioContext || anyWindow.webkitAudioContext;
-        this.audio.ctx = new AudioContext();
-        if (this.audio.ctx.state === 'suspended') {
-            this.audio.ctx.resume();
-        }
-        this.audio.bgMusic = Assets.audio.bgMusic.cloneNode(true) as HTMLAudioElement;
-        this.audio.trackBgMusic = this.audio.ctx.createMediaElementSource(this.audio.bgMusic);
-        // Make it a bit quieter
-        this.audio.bgGainNode = this.audio.ctx.createGain();
-        this.audio.bgGainNode.gain.value = 0.4;
-        this.audio
-            .trackBgMusic.connect(this.audio.bgGainNode)
-            .connect(this.audio.ctx.destination);
-        // Loop the bg music
-        if (typeof this.audio.bgMusic.loop == 'boolean')
-            this.audio.bgMusic.loop = true;
-        else
-            this.audio.bgMusic.addEventListener('ended', () => {
-                this.audio.bgMusic.currentTime = 0;
-                this.audio.bgMusic.play();
-            }, false);
-        this.audio.bgMusic.play();
-
-        this.audio.initialized = true;
-    }
-
     update(controls: InputState) {
         if (controls.isClicked("mouse") && !this.audio.initialized) {
-            this.initAudio();
+            initAudio();
         }
 
         const nextState = this.state.update(controls);

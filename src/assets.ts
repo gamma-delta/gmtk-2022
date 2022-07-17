@@ -1,4 +1,7 @@
-const Assets = {
+import { GameAudio } from "./consts.js";
+
+const sfxAudios: HTMLAudioElement[] = [];
+export const Assets = {
     textures: {
         font: image("font"),
         numberFont: image("number_font"),
@@ -23,11 +26,48 @@ const Assets = {
         modronCore: image("items/modron_core"),
         doubloon: image("items/doubloon"),
         trebloon: image("items/trebloon"),
+        horn: image("items/horn"),
+        tail: image("items/tail"),
 
         treasureChest: image("treasure_chest"),
     },
     audio: {
-        bgMusic: audio("dicejam.mp3")
+        bgMusic: audio("dicejam.mp3", false),
+        silence: audio("silence.ogg"),
+
+        modronEnter: audio("modron_enter.ogg"),
+        modronDie: audio("modron_die.ogg"),
+        modronWin: audio("modron_win.ogg"),
+        gelatinEnter: audio("gelatin_enter.ogg"),
+        gelatinDie: audio("gelatin_die.ogg"),
+        gelatinWin: audio("gelatin_win.ogg"),
+        goblinEnter: audio("goblin_enter.ogg"),
+        goblinDie: audio("goblin_die.ogg"),
+        goblinWin: audio("goblin_win.ogg"),
+        dragonEnter: audio("dragon_enter.ogg"),
+        dragonDie: audio("dragon_die.ogg"),
+        dragonWin: audio("dragon_win.ogg"),
+        pirateEnter: audio("pirate_enter.ogg"),
+        pirateDie: audio("pirate_die.ogg"),
+        pirateWin: audio("pirate_win.ogg"),
+        demonEnter: audio("demon_enter.ogg"),
+        demonDie: audio("demon_die.ogg"),
+        demonWin: audio("demon_win.ogg"),
+
+        treasureChest: audio("treasure_chest.ogg"),
+
+        toggleSfx() {
+            for (let sfx of sfxAudios) {
+                sfx.muted = !sfx.muted;
+            }
+        },
+        toggleMusic() {
+            if (GameAudio.bgGainNode.gain.value <= 0.05) {
+                GameAudio.bgGainNode.gain.value = 0.4;
+            } else {
+                GameAudio.bgGainNode.gain.value = 0.0;
+            }
+        }
     }
 };
 
@@ -37,10 +77,12 @@ function image(url: string) {
     return img;
 }
 
-function audio(url: string) {
+function audio(url: string, sfx: boolean = true) {
     let audio = new Audio();
     audio.src = "assets/audio/" + url;
+    if (sfx) {
+        (audio as any).preservesPitch = false;
+        sfxAudios.push(audio);
+    }
     return audio;
 }
-
-export { Assets };

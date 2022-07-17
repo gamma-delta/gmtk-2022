@@ -18,7 +18,7 @@ export const DieMods = {
             modifyRoll(die, roll) {
                 return rank;
             },
-            name: "Modron Core " + rank,
+            name: "modron core " + rank,
             short: "=" + rank,
             description: `Makes the die always roll ${rank}.`,
             flavor: `Due to Primus' divine influence, a modron's core suppresses probability near itself.`,
@@ -64,6 +64,19 @@ export const DieMods = {
             flavor: "Doubloons and trebloons are useless as currency, due to their tendency to mess up ledgers and accounting books.",
             image: [Assets.textures.doubloon, Assets.textures.trebloon][multiplier - 2],
         }
+    },
+    demonPart(inc: boolean): DieMod {
+        return {
+            modifyRoll(die, roll) {
+                return roll + (inc ? 1 : -1);
+            },
+            name: inc ? "Inc-ubus Horn" : "Succ-ubus Tail",
+            short: (inc ? "+" : "-") + "1",
+            description: (inc ? "Adds" : "Subtracts") + " one from the roll",
+            flavor: 'Inc/succ-ubi can detach certain parts of their body in defense, like lizards. Demonologists postulate that concubi would be given to dropping' +
+                ' their "philtrum," but no one\'s managed to get a straight answer out of a demonologist as to what a "philtrum" is.',
+            image: inc ? Assets.textures.horn : Assets.textures.tail,
+        }
     }
 }
 
@@ -90,7 +103,7 @@ export const Items = {
     healingPotion(): Item {
         return {
             name: "healing potion",
-            short: "\x7f1", // cp437 house
+            short: "\x031", // cp437 heart
             description: "Restores a single die.",
             data: { type: "restoreOne" },
             image: Assets.textures.potionHealing,
@@ -99,7 +112,7 @@ export const Items = {
     greaterHealingPotion(): Item {
         return {
             name: "greater healing potion",
-            short: "\x7fA",
+            short: "\x03A",
             description: "Restores all your dice.",
             data: { type: "restoreAll" },
             image: Assets.textures.potionHealing2,
@@ -134,5 +147,5 @@ export const Items = {
             },
             image: mod.image,
         }
-    }
+    },
 }

@@ -103,18 +103,21 @@ export class Level {
 
             let difficultyRemaining = depth * 2 + 4;
             let len = Math.max(3, Math.min(9, randint(Math.floor(depth / 2), depth * 2)));
-            while (monsters.length < len) {
+            let tries = 100;
+            while (monsters.length < len && (tries--) > 0) {
                 let diff = randint(Math.ceil(difficultyRemaining / 3), difficultyRemaining + 1);
+                let success = false;
                 for (let i = 0; i < monsterManual.length; i++) {
                     let { monster: monsterFactory, difficulty } = monsterManual[i];
                     if (difficulty <= diff) {
                         monsters.push({ monster: monsterFactory(), difficulty });
                         difficultyRemaining -= difficulty;
+                        success = true;
                         break;
                     }
                 }
-                if (difficultyRemaining <= 0) {
-                    difficultyRemaining = depth;
+                if (!success) {
+                    difficultyRemaining += depth;
                 }
             }
             monsters.sort((a, b) => a.difficulty - b.difficulty + (Math.random() - 0.5) * 3.5);

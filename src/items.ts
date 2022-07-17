@@ -34,7 +34,7 @@ export const DieMods = {
             short: "MAX",
             description: "Makes the die always roll its highest possible value.",
             flavor: "High-dra venom is sometimes sold in irreputable taverns for its ... strengthening effects.",
-            image: Assets.textures.ninja
+            image: Assets.textures.highdraHead
         }
     },
     nloon(multiplier: number, metal: "silver" | "gold"): DieMod {

@@ -18,6 +18,8 @@ export const Consts = {
     PENCIL_COLOR: "#494d47",
     HORIZ_LINE_SPACING: CHAR_HEIGHT + KERNING_Y,
     VERT_LINE_OFFSET: CHAR_WIDTH * 2,
+
+    MUSIC_VOLUME: 0.2,
 };
 
 export const GameAudio: {
@@ -29,13 +31,13 @@ export const GameAudio: {
     bgGainNode: GainNode,
 } = {
     initialized: false,
-    ctx: null,
+    ctx: null!,
 
-    bgMusic: null,
-    trackBgMusic: null,
+    bgMusic: null!,
+    trackBgMusic: null!,
 
-    bgGainNode: null,
-} as any;
+    bgGainNode: null!,
+};
 export function initAudio() {
     if (GameAudio.initialized) return;
 
@@ -49,7 +51,7 @@ export function initAudio() {
     GameAudio.trackBgMusic = GameAudio.ctx.createMediaElementSource(GameAudio.bgMusic);
     // Make it a bit quieter
     GameAudio.bgGainNode = GameAudio.ctx.createGain();
-    GameAudio.bgGainNode.gain.value = 0.2;
+    GameAudio.bgGainNode.gain.value = Consts.MUSIC_VOLUME;
     GameAudio
         .trackBgMusic.connect(GameAudio.bgGainNode)
         .connect(GameAudio.ctx.destination);

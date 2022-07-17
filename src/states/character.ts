@@ -14,8 +14,8 @@ export class StateCharSelect implements GameState {
     constructor() {
         this.widgets = [];
         let y = Consts.HORIZ_LINE_SPACING * 4 + 4;
-        for (let clazz of PlayerClasses) {
-            let wig = new WidgetCharacter(this, Consts.VERT_LINE_OFFSET + Consts.CHAR_WIDTH * 4, y, clazz);
+        for (let clazzFactory of PlayerClasses) {
+            let wig = new WidgetCharacter(this, Consts.VERT_LINE_OFFSET + Consts.CHAR_WIDTH * 4, y, clazzFactory());
             y += wig.h + Consts.HORIZ_LINE_SPACING;
             this.widgets.push(wig);
         }
@@ -56,7 +56,7 @@ class WidgetCharacter extends Widget<StateCharSelect> {
             }
         }
         const itemString = "Items: " + this.clazz.items.map(item => item.name).join(", ");
-        const powString = this.clazz.powerDesc;
+        const powString = this.clazz.powerName + ": " + this.clazz.powerDesc;
         const diffString = "Difficulty: " + "\x04".repeat(this.clazz.difficulty);
 
         const lines = `${this.clazz.description}\n${dieString}\n${itemString}\n${powString}\n${diffString}`;

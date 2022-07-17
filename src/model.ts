@@ -135,59 +135,64 @@ export type PlayerClassType = "Fighter" | "Cleric" | "Rogue" | "Wizard";
 export interface PlayerClass {
     type: PlayerClassType,
     description: string,
+    powerName: string,
     powerDesc: string,
     difficulty: number,
     dice: Die[],
     items: Item[],
 }
 
-export const PlayerClasses: PlayerClass[] = [
-    {
+export const PlayerClasses: (() => PlayerClass)[] = [
+    () => ({
         type: "Fighter",
         description: "A brave adventurer with a trusty cardboard sword.",
-        powerDesc: "Second Wind: Re-roll and restore one of your dice once per floor.",
+        powerName: "Second Wind",
+        powerDesc: "Re-roll and restore one of your dice once per floor.",
         difficulty: 1,
-        dice: [new Die(4), new Die(6), new Die(6), new Die(6), new Die(8)],
+        dice: [new Die(4), new Die(6), new Die(6), new Die(6), new Die(8), new Die(12)],
         items: [
             Items.toItem(DieMods.nloon(2, "silver")),
             Items.healingPotion(),
+            Items.greaterHealingPotion(),
             Items.luckPotion(),
         ]
-    },
-    {
-        type: "Cleric",
-        description: "A devotee of one of the many deities that sponsor dungeon-delving.",
-        powerDesc: "Rebuke: Immediately defeat a demon or pirate once per floor.",
-        difficulty: 2,
-        dice: [new Die(4), new Die(4), new Die(4), new Die(4), new Die(4)],
-        items: [
-            Items.toItem(DieMods.nloon(2, "gold")),
-            Items.toItem(DieMods.nloon(3, "gold")),
-            Items.toItem(DieMods.modronCore(5)),
-            Items.greaterHealingPotion(),
-        ]
-    },
-    {
+    }),
+    () => ({
         type: "Rogue",
         description: "A swindler with a clever smirk and cleverer fingers,",
-        powerDesc: "Cheat: The first time you would lose a die on a floor, you get it back instead.",
-        difficulty: 3,
+        powerName: "Cheat",
+        powerDesc: "The first time you would lose a d2 on a floor, you get it back instead.",
+        difficulty: 2,
         dice: [new Die(2), new Die(2), new Die(2), new Die(4), new Die(6)],
         items: [
             Items.toItem(DieMods.demonPart(true)),
             Items.toItem(DieMods.demonPart(false)),
         ]
-    },
-    {
+    }),
+    () => ({
+        type: "Cleric",
+        description: "A devotee of one of the many deities that sponsor dungeon-delving.",
+        powerName: "Rebuke",
+        powerDesc: "Immediately defeat a demon or pirate once per floor.",
+        difficulty: 3,
+        dice: [new Die(4), new Die(4), new Die(4), new Die(4)],
+        items: [
+            Items.toItem(DieMods.nloon(2, "gold")),
+            Items.toItem(DieMods.nloon(3, "gold")),
+            Items.toItem(DieMods.modronCore(5)),
+        ]
+    }),
+    () => ({
         type: "Wizard",
         description: "A scholar of the arcane spelunking for more hands-on research.",
-        powerDesc: "Teleport: Exchange your used and ready dice once per floor.",
+        powerName: "Transpose",
+        powerDesc: "Kill a random used die to exchange your used and ready dice once per floor.",
         difficulty: 4,
-        dice: [new Die(10), new Die(10), new Die(12), new Die(20),
+        dice: [new Die(10), new Die(10), new Die(12),
         (function () { const die = new Die(20); die.mod = DieMods.nloon(3, "silver"); return die; })()],
         items: [
             Items.healingPotion(),
             Items.luckPotion(),
         ]
-    }
+    })
 ];

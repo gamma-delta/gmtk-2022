@@ -1,4 +1,4 @@
-import { GameAudio } from "./consts.js";
+import { Consts, GameAudio } from "./consts.js";
 
 const sfxAudios: HTMLAudioElement[] = [];
 export const Assets = {
@@ -17,6 +17,11 @@ export const Assets = {
         gelatinousSquare: image("monsters/gelatinous_square"),
         gelatinousCube: image("monsters/gelatinous_cube"),
         dragon: image("monsters/dragon"),
+        highdra: image("monsters/highdra"),
+        succubus: image("monsters/succubus"),
+        incubus: image("monsters/incubus"),
+        birate: image("monsters/birate"),
+        trirate: image("monsters/trirate"),
         ninja: image("monsters/masterful_ninja"),
 
         potionHealing: image("items/healing"),
@@ -28,6 +33,7 @@ export const Assets = {
         trebloon: image("items/trebloon"),
         horn: image("items/horn"),
         tail: image("items/tail"),
+        highdraHead: image("items/highdra_head"),
 
         treasureChest: image("treasure_chest"),
     },
@@ -55,6 +61,7 @@ export const Assets = {
         demonWin: audio("demon_win.ogg"),
 
         treasureChest: audio("treasure_chest.ogg"),
+        diceRoll: audio("diceroll.ogg"),
 
         toggleSfx() {
             for (let sfx of sfxAudios) {
@@ -62,8 +69,8 @@ export const Assets = {
             }
         },
         toggleMusic() {
-            if (GameAudio.bgGainNode.gain.value <= 0.05) {
-                GameAudio.bgGainNode.gain.value = 0.4;
+            if (GameAudio.bgGainNode.gain.value <= 0.0001) {
+                GameAudio.bgGainNode.gain.value = Consts.MUSIC_VOLUME;
             } else {
                 GameAudio.bgGainNode.gain.value = 0.0;
             }

@@ -7,39 +7,49 @@ export function lethalDamage(roll: number, monster: Monster) {
         "swings",
         "crushes",
         "tears",
+        "crunches",
     ]);
     let adverb = pick([
         "wetly ",
         "satisfyingly ",
         "ferociously ",
-        ""
+        "critically ",
+        "right ",
+        "",
+        "",
     ]);
-    let bodyPart = pick(monster.bodyParts);
+    let bodyPart = (Math.random() < 0.2)
+        ? ""
+        : "'s " + pick(monster.bodyParts);
     let excitement = pick([
         ".", ".", "!", "!!"
     ]);
-    return `Your ${roll} ${verb} ${adverb}through the ${monster.name}'s ${bodyPart}${excitement}`;
+    return `Your ${roll} ${verb} ${adverb}through the ${monster.name}${bodyPart}${excitement}`;
 }
 export function nonLethalDamage(roll: number, monster: Monster) {
     let verb = pick([
         "pings",
         "bounces",
         "skitters",
-        "flops"
+        "flops",
     ]);
     let prep = pick([
         "off",
         "against",
-        "across"
+        "across",
+        "away from"
     ]);
     let adverb = pick([
         "pathetically ",
         "limply ",
+        "anemically ",
         "", ""
     ]);
-    let bodyPart = pick(monster.bodyParts);
+    let bodyPart = (Math.random() < 0.2)
+        ? ""
+        : "'s " + pick(monster.bodyParts);
     let excitement = pick([
-        ".", ".", "..."
+        ".", ".", "...", "...", " :("
     ]);
-    return `Your ${roll} ${adverb}${verb} ${prep} the ${monster.name}'s ${bodyPart}${excitement}`;
+    return `Your ${roll} ${adverb}${verb} ${prep} the ${monster.name}${bodyPart}${excitement}`;
 }

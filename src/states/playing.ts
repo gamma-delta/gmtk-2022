@@ -1,5 +1,5 @@
 import { Assets } from "../assets.js";
-import { Consts } from "../consts.js";
+import { Consts, GameAudio } from "../consts.js";
 import { InputState } from "../inputs.js";
 import { DieMod, Item, Items } from "../items.js";
 import { Die, Level, PlayerClass, PlayerClasses } from "../model.js";
@@ -16,7 +16,7 @@ const INFO_BOX_HEIGHT = Consts.CHAR_WIDTH * 23.75;
 const DIE_TRAY_HEIGHT = Math.round((400 - ART_HEIGHT) / 3 / 2) * 2;
 const INFO_BOX_CHAR_WIDTH = 48;
 
-const DIE_ROLL_TIME = 20;
+const DIE_ROLL_TIME = 25;
 const MONSTER_ANIM_TIME = 40;
 const MONSTER_FALL_TIME = 12;
 const MONSTER_ENTER_TIME = 20;
@@ -33,6 +33,7 @@ export class StatePlaying implements GameState {
     usedDice: [Die, number][];
     items: Item[];
     clazz: PlayerClass;
+    usedPower: boolean = false;
 
     depth: number;
     swapState: GameState | null = null;
@@ -49,16 +50,24 @@ export class StatePlaying implements GameState {
 
     static start(clazz: PlayerClass) {
         const level = Level.generateFromDepth(0);
-        return new StatePlaying(level, 0, clazz);
+        const log = [
+            ":: Welcome to Roll-Playing Game.",
+            ":: You're playing a " + clazz.type + "!",
+            ":: You hold your newspaper hat tight to your head as you step into the dungeon, dust billowing like an ancient book under your footsteps.",
+            ":: Your mentor's advice echoes in your head:",
+            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the treasure chest."',
+            ':: "Go as deep as you can, and don\'t run out of dice!"',
+        ];
+        return new StatePlaying(level, 0, clazz.dice.slice(), clazz.items.slice(), clazz, log);
     }
 
-    private constructor(level: Level, depth: number, clazz: PlayerClass) {
+    private constructor(level: Level, depth: number, dice: Die[], items: Item[], clazz: PlayerClass, log: string[]) {
         this.level = level;
         this.depth = depth;
 
-        this.dice = clazz.dice.map(die => [die, die.roll()]);
+        this.dice = dice.map(die => [die, die.roll()]);
         this.usedDice = [];
-        this.items = clazz.items.slice();
+        this.items = items;
         this.clazz = clazz;
 
         this.widgets = [];
@@ -68,20 +77,22 @@ export class StatePlaying implements GameState {
                 let y = ART_HEIGHT + (DIE_TRAY_HEIGHT / 2 - Die.TEX_HEIGHT / 2) + (used ? DIE_TRAY_HEIGHT : 0);
                 this.widgets.push(new WidgetDie(this, x, y, Die.TEX_WIDTH, Die.TEX_HEIGHT, i, used));
                 if (used === true) {
-                    this.widgets.push(new WidgetItem(this, x - 1, y + DIE_TRAY_HEIGHT - 8, ITEM_SIZE, ITEM_SIZE, i));
+                    this.widgets.push(new WidgetItem(this, x - 1, y + DIE_TRAY_HEIGHT - 12, ITEM_SIZE, ITEM_SIZE, i));
                 }
             }
         }
         this.widgets.push(new WidgetInfoPanel(this, ART_WIDTH, 0, 999999, ART_WIDTH));
-        this.log = [
-            ":: Welcome to Roll-Playing Game.",
-            ":: You hold your newspaper hat tight to your head as you step into the dungeon, dust billowing like an ancient book under your footsteps.",
-            ":: Your mentor's advice echoes in your head:",
-            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the treasure chest."',
-            ':: "Go as deep as you can, and don\'t run out of dice!"',
-        ];
+        let powerLen = "Activate ".length + this.clazz.powerName.length;
+        this.widgets.push(new WidgetActivatePower(this,
+            Consts.VERT_LINE_OFFSET + Consts.CHAR_WIDTH, 400 - Consts.CHAR_HEIGHT - 2,
+            powerLen * Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT));
 
-        this.treasureChest = (Math.random() < 0.5) ? new Die(pick([4, 6, 8, 10, 12, 20])) : null;
+        this.widgets.push(new WidgetSidewaysText(this, Consts.CHAR_HEIGHT * 0.5, Consts.CHAR_WIDTH * 4, "Music", () => Assets.audio.toggleMusic()))
+        this.widgets.push(new WidgetSidewaysText(this, Consts.CHAR_HEIGHT * 0.5, Consts.CHAR_WIDTH * 11, "SFX", () => Assets.audio.toggleSfx()))
+        this.widgets.push(new WidgetSidewaysText(this, Consts.CHAR_HEIGHT * 0.5, Consts.CHAR_WIDTH * 16, "Quit", s => s.swapState = new StateCharSelect()));
+
+        this.log = log;
+        this.treasureChest = (Math.random() < 0.5) ? new Die(pick([2, 4, 6, 8, 10, 12, 20])) : null;
     }
 
     mode(): "monster" | "treasureChest" | "lost" {
@@ -99,6 +110,9 @@ export class StatePlaying implements GameState {
             wig.update(controls);
         }
 
+        if (this.frames === 0) {
+            Assets.audio.diceRoll.play();
+        }
         this.frames++;
         if (this.monsterAnim.mode != "none" && this.frames - this.monsterAnim.startFrame > MONSTER_ANIM_TIME) {
             this.monsterAnim = { mode: "none" };
@@ -117,37 +131,41 @@ export class StatePlaying implements GameState {
 
                 let oldMod = diePair[0].mod;
                 diePair[0].mod = item.data.dieMod;
+                diePair[1] = diePair[0].roll();
 
                 if (oldMod !== null) {
                     this.log.push(`:: You take the old ${oldMod.name} off of your d${diePair[0].sides} and replace it with the ${item.data.dieMod.name}.`);
                 } else {
                     this.log.push(`:: You equip the ${item.data.dieMod.name} to your d${diePair[0].sides}.`);
                 }
-                diePair[1] = diePair[0].roll();
-                for (let wig of this.widgets) {
-                    if (wig instanceof WidgetDie && wig.index === index && wig.used === used) {
-                        wig.dieRollAnimFrame = this.frames;
-                        break;
-                    }
-                }
+                this.visuallyRollDice(index, used);
             } else if (item.data.type === "rerollOne") {
                 // ok i'll let you reroll a used die if you want fine
                 let diePair = (used ? this.usedDice : this.dice)[index];
                 if (diePair === undefined) return;
                 diePair[1] = diePair[0].roll();
-                this.log.push(`:: You pour the potion over your d${diePair[0].sides}. It rattles.`);
 
-                for (let wig of this.widgets) {
-                    if (wig instanceof WidgetDie && wig.index === index && wig.used === used) {
-                        wig.dieRollAnimFrame = this.frames;
-                        break;
-                    }
-                }
+                this.log.push(`:: You pour the potion over your d${diePair[0].sides}. It rattles.`);
+                this.visuallyRollDice(index, used);
             } else if (item.data.type === "restoreOne") {
                 if (!used || index >= this.usedDice.length) return;
                 let [diePair] = this.usedDice.splice(index, 1);
                 this.dice.push(diePair);
                 this.log.push(`:: You pour the potion over your d${diePair[0].sides}. It glows and refreshes.`);
+            } else if (item.data.type === "fighterSecondWind") {
+                let diePair = (used ? this.usedDice : this.dice)[index];
+                if (diePair === undefined) return;
+                diePair[1] = diePair[0].roll();
+
+                let shakeIdx = index;
+                if (used) {
+                    this.usedDice.splice(index, 1);
+                    this.dice.push(diePair);
+                    shakeIdx = this.dice.length - 1;
+                }
+                this.usedPower = true;
+                this.log.push(`:: You gather your strength and revitalize your d${diePair[0].sides}!`);
+                this.visuallyRollDice(shakeIdx, false);
             } else {
                 console.log("Uh oh, tried to apply an item that shouldn't be applied", item);
             }
@@ -182,7 +200,13 @@ export class StatePlaying implements GameState {
                 this.monsterAnim = { mode: "kill", startFrame: this.frames };
             } else {
                 this.log.push(":: " + nonLethalDamage(diePair[1], monster));
-                this.log.push(`:: It slinks off into the darkness with your d${diePair[0].sides}.`);
+                if (this.clazz.type === "Rogue" && diePair[0].sides === 2 && !this.usedPower) {
+                    this.usedDice.push(diePair);
+                    this.usedPower = true;
+                    this.log.push(`:: It slinks off into the darkness, but you got your coin back when it wasn't looking! Clever!`);
+                } else {
+                    this.log.push(`:: It slinks off into the darkness with your d${diePair[0].sides}.`);
+                }
                 this.monsterAnim = { mode: "run", startFrame: this.frames };
             }
             this.monsterIdx++;
@@ -204,7 +228,8 @@ export class StatePlaying implements GameState {
                 this.log.push(`:: You had no room for the d${this.treasureChest.sides} in the chest, so you left it there.`);
             }
             this.log.push(`:: You descend the stairs deeper into the dungeon, down to floor ${this.depth + 2}.`);
-            this.swapState = new StateCharSelect();
+
+            this.swapState = new StatePlaying(nextLevel, this.depth + 1, dice, this.items, this.clazz, this.log);
         } else if (mode === "lost") {
             this.swapState = new StateLose({
                 depth: this.depth,
@@ -231,11 +256,7 @@ export class StatePlaying implements GameState {
                 pair[1] = pair[0].roll();
             }
             this.log.push(":: You pour the potion over your unused dice. They rattle.");
-            for (let wig of this.widgets) {
-                if (wig instanceof WidgetDie) {
-                    wig.dieRollAnimFrame = this.frames;
-                }
-            }
+            this.visuallyRollDice("all", null);
         } else if (item.data.type === "restoreAll") {
             this.dice.push(...this.usedDice);
             this.usedDice = [];
@@ -252,6 +273,46 @@ export class StatePlaying implements GameState {
                 type: "applyingItem",
                 itemIdx: index,
             };
+        }
+    }
+
+    canActivatePower(): boolean {
+        if (this.usedPower || this.coverMode.type === "applyingItem" || this.mode() !== "monster") return false;
+        if (this.clazz.type === "Fighter") {
+            return true;
+        } else if (this.clazz.type === "Cleric") {
+            return this.level.monsters[this.monsterIdx].rebukable;
+        } else if (this.clazz.type === "Rogue") {
+            return false; // passive
+        } else if (this.clazz.type === "Wizard") {
+            // 2 because if you only had one die you'd immediately die
+            return this.usedDice.length >= 2;
+        } else {
+            // uh oh
+            return false;
+        }
+    }
+
+    activatePower() {
+        if (!this.canActivatePower()) return; // how'd ya do that?
+
+        if (this.clazz.type === "Fighter") {
+            this.coverMode = { type: "applyingItem", itemIdx: "fighterSecondWind" };
+        } else if (this.clazz.type === "Cleric") {
+            this.monsterAnim = { mode: "kill", startFrame: this.frames };
+            this.log.push(`:: You rebuke the ${this.level.monsters[this.monsterIdx].name}! It scampers away into the darkness ashamed.`);
+            this.monsterIdx++;
+            this.usedPower = true;
+        } else if (this.clazz.type === "Rogue") {
+            // uhhhhh
+        } else if (this.clazz.type === "Wizard") {
+            let temp = this.usedDice.slice();
+            let killIdx = randint(0, temp.length);
+            let [[killed, _]] = temp.splice(killIdx, 1);
+            this.usedDice = this.dice;
+            this.dice = temp;
+            this.log.push(`:: You invoke a spell! Your d${killed.sides} disappears in an acrid puff of aether as your used and ready dice swap places.`);
+            this.usedPower = true;
         }
     }
 
@@ -394,6 +455,17 @@ export class StatePlaying implements GameState {
 
         ctx.stroke();
     }
+
+    visuallyRollDice(index: "all" | number, used: boolean | null) {
+        for (let wig of this.widgets) {
+            if (wig instanceof WidgetDie
+                && (index === "all" || wig.index === index)
+                && (used === null || wig.used === used)) {
+                wig.dieRollAnimFrame = this.frames;
+            }
+        }
+        Assets.audio.diceRoll.play();
+    }
 }
 
 class WidgetDie extends Widget<StatePlaying> {
@@ -520,6 +592,41 @@ class WidgetInfoPanel extends Widget<StatePlaying> {
         }
         drawString(ctx, header, ART_WIDTH + Consts.CHAR_WIDTH / 2, Consts.CHAR_HEIGHT + 6, INFO_BOX_CHAR_WIDTH, Consts.PINK_LINE_COLOR);
         drawString(ctx, text, ART_WIDTH + Consts.CHAR_WIDTH / 2, Consts.CHAR_HEIGHT * 3, INFO_BOX_CHAR_WIDTH);
+    }
+}
+
+class WidgetActivatePower extends Widget<StatePlaying> {
+    constructor(state: StatePlaying, x: number, y: number, w: number, h: number) {
+        super(state, x, y, w, h);
+    }
+
+    onClick(): void {
+        this.state.activatePower();
+    }
+    draw(ctx: CanvasRenderingContext2D): void {
+        if (this.state.canActivatePower()) {
+            drawStringAlign(ctx, "Activate " + this.state.clazz.powerName, this.x, this.y, "left", this.isHovered ? Consts.PINK_LINE_COLOR : Consts.PENCIL_COLOR);
+        }
+    }
+}
+
+class WidgetSidewaysText extends Widget<StatePlaying> {
+    msg: string;
+    click: (state: StatePlaying) => void;
+    constructor(state: StatePlaying, x: number, y: number, msg: string, click: (state: StatePlaying) => void) {
+        super(state, x, y, Consts.CHAR_HEIGHT, msg.length * Consts.CHAR_WIDTH);
+        this.msg = msg;
+        this.click = click;
+    }
+
+    onClick(): void {
+        this.click(this.state)
+    }
+    draw(ctx: CanvasRenderingContext2D): void {
+        ctx.save();
+        ctx.rotate(Math.PI / -2);
+        drawStringAlign(ctx, this.msg, -this.y, this.x, "right", this.isHovered ? Consts.PINK_LINE_COLOR : Consts.PENCIL_COLOR);
+        ctx.restore();
     }
 }
 

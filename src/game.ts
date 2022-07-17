@@ -9,16 +9,6 @@ export class RollPlayingGame {
     ctx: CanvasRenderingContext2D;
     width: number;
     height: number;
-
-    audio: {
-        initialized: boolean,
-        ctx: AudioContext,
-
-        bgMusic: HTMLAudioElement,
-        trackBgMusic: MediaElementAudioSourceNode,
-        bgGainNode: GainNode
-    }
-
     state: GameState;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -33,14 +23,11 @@ export class RollPlayingGame {
         this.width = canvas.width;
         this.height = canvas.height;
 
-        // this has to be lateinit
-        this.audio = { initialized: false } as any;
-
         this.state = new StateSplash();
     }
 
     update(controls: InputState) {
-        if (controls.isClicked("mouse") && !this.audio.initialized) {
+        if (controls.isClicked("mouse")) {
             initAudio();
         }
 

@@ -8,6 +8,7 @@ export interface Monster {
     name: string,
     blurb: string,
     bodyParts: string[],
+    rebukable: boolean,
 
     image: HTMLImageElement,
     enterSound: HTMLAudioElement,
@@ -21,7 +22,7 @@ export const Monsters = {
         itemDropped() {
             if (Math.random() < 0.7) return null;
             if (Math.random() < 0.2) {
-                let pots = (rank < 3)
+                let pots = (rank <= 3)
                     ? [
                         Items.healingPotion(),
                         Items.luckPotion(),
@@ -37,6 +38,7 @@ export const Monsters = {
         name: ["monodron", "duodron", "tridron", "quadron", "pentadron"][rank - 1],
         blurb: makeModronBlurb(rank),
         bodyParts: ["chassis", "core", "gears", "wing", "antenna", "plating"],
+        rebukable: false,
 
         image: [Assets.textures.monodron, Assets.textures.duodron, Assets.textures.tridron, Assets.textures.quadron, Assets.textures.pentadron][rank - 1],
         enterSound: Assets.audio.modronEnter,
@@ -44,16 +46,20 @@ export const Monsters = {
         winSound: Assets.audio.modronWin,
     }),
     dragon: (heads: number): Monster => {
-        let blurb = `Defeated by the number ${heads}.\n\nDragonologists INSIST on calling garden-variety dragons "one-headed dragons." Dragonologists are no fun at parties.`;
-        if (heads != 1) {
-            blurb += `\n\nEach of the dragon's heads is in a fierce custody battle for all the other heads, so only one is allowed to appear onscreen at a time.`
+        let blurb = `Defeated by the number ${heads}.\n\nDragonologists INSIST on calling garden-variety dragons "one-headed dragons,"`
+            + ` and will NOT shut up about wondering why they look just like high-dras. Dragonologists are no fun at parties.`
+            + "\n\nIn retrospect, asking Falkory to draw ten different dragons was probably setting us up for failure. (Sorry)";
+        const bodyParts = [];
+        for (let i = 0; i < heads; i++) {
+            bodyParts.push("head #" + (i + 1));
         }
         return {
             defeatedBy: (dice, idx) => dice[idx] === heads,
-            itemDropped: () => null,
+            itemDropped: () => pick([Items.greaterHealingPotion(), Items.greaterLuckPotion()]),
             name: ["zero?!", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][heads] + "-headed dragon",
             blurb,
-            bodyParts: ["eye", "head", "heart", "wing", "neck"],
+            bodyParts,
+            rebukable: false,
 
             image: Assets.textures.dragon,
             enterSound: Assets.audio.dragonEnter,
@@ -72,8 +78,10 @@ export const Monsters = {
         },
         name: "high-dra",
         blurb: "Defeated by your highest die.\n\nThe high-dra is a cousin to the pi-dra. Pi-dras were hunted to extinction in 754 I.E. after people got sick of dealing with the points they left floating everywhere.",
-        bodyParts: ["head", "other head", "other other head"],
-        image: Assets.textures.ninja,
+        bodyParts: ["head", "frill", "teeth"],
+        rebukable: false,
+
+        image: Assets.textures.highdra,
         enterSound: Assets.audio.dragonEnter,
         dieSound: Assets.audio.dragonDie,
         winSound: Assets.audio.dragonWin,
@@ -101,8 +109,10 @@ export const Monsters = {
         name: ["birate", "trirate"][threshold - 2],
         blurb: `Defeated by a number you have ${threshold} or more of.\n\nMost pirates were driven out of work during 754 I.E.`
             + ` Interestingly enough, although pirates were human, birates and trirates are fungi that perfectly resemble humans.`,
+        rebukable: true,
+
         bodyParts: ["eye patch", "hook hand", "peg leg", "grog"],
-        image: Assets.textures.ninja,
+        image: [Assets.textures.birate, Assets.textures.trirate][threshold - 2],
         enterSound: Assets.audio.pirateEnter,
         dieSound: Assets.audio.pirateDie,
         winSound: Assets.audio.pirateWin,
@@ -120,6 +130,7 @@ export const Monsters = {
         blurb: "Defeated by composite numbers. 1 is not composite.\n\nIt's this little goblin's first day on dungeon duty, and all it could find was this patchy armor."
             + " It barely fits, and it lets composite numbers straight through. Poor thing.",
         bodyParts: ["leg", "arm", "head", "nose", "hat"],
+        rebukable: false,
 
         image: Assets.textures.cobbleGoblin,
         enterSound: Assets.audio.goblinEnter,
@@ -138,7 +149,9 @@ export const Monsters = {
         name: "prime goblin",
         blurb: "Defeated by prime numbers. 1 is not prime.\n\nAt some point, the idea of giving a prime goblin a cobble goblin's armor was raised, but the discussion fell apart."
             + " The goblins couldn't decide what to do with the number 1, given most of them can't count much higher.",
-        bodyParts: ["leg", "arm", "head", "nose", "hat"],
+        bodyParts: ["leg", "arm", "head", "nose", "fancy hat"],
+        rebukable: false,
+
         image: Assets.textures.goblinLord,
         enterSound: Assets.audio.goblinEnter,
         dieSound: Assets.audio.goblinDie,
@@ -158,6 +171,7 @@ export const Monsters = {
         name: "gelatinous square",
         blurb: "Defeated by square numbers.\n\nJust a plane ol' gelatinous square.",
         bodyParts: ["gel", "gelatin", "corner", "edge"],
+        rebukable: false,
 
         image: Assets.textures.gelatinousSquare,
         enterSound: Assets.audio.gelatinEnter,
@@ -179,6 +193,7 @@ export const Monsters = {
         blurb: 'Defeated by cubic numbers.\n\nIn the old days, gelatinous cubes used to be farmed for their gelatin. It was marketed as a "cruelty-free" or vegetarian gelatin, saving those poor pigs from getting their joints melted down.'
             + " Business went remarkably well until all the farmers were dissolved by their livestock.",
         bodyParts: ["gel", "gelatin", "corner", "edge", "face"],
+        rebukable: false,
 
         image: Assets.textures.gelatinousCube,
         enterSound: Assets.audio.gelatinEnter,
@@ -202,8 +217,9 @@ export const Monsters = {
         blurb: `Defeated by a number one ${inc ? "more" : "less"} than another number you rolled.\n\nInc-ubi and succ-ubi are actually the same creature in different moods.`
             + " Much of demonology involves trying to create a comfortable enough atmosphere for an inc/succ-ubus to become a concubus, a demon which so far has only been spotted in the wild.",
         bodyParts: ["wing", "horn", "tail"],
+        rebukable: true,
 
-        image: Assets.textures.ninja,
+        image: inc ? Assets.textures.incubus : Assets.textures.succubus,
         enterSound: Assets.audio.demonEnter,
         dieSound: Assets.audio.demonDie,
         winSound: Assets.audio.demonWin,

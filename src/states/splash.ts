@@ -2,6 +2,7 @@ import { Consts } from "../consts.js";
 import { InputState } from "../inputs.js";
 import { GameState } from "../states.js";
 import { drawString } from "../utils.js";
+import { StateCharSelect } from "./character.js";
 import { StatePlaying } from "./playing.js";
 
 export class StateSplash implements GameState {
@@ -9,7 +10,7 @@ export class StateSplash implements GameState {
 
     update(controls: InputState): GameState | null {
         if (controls.isClicked("mouse")) {
-            return StatePlaying.start();
+            return new StateCharSelect();
         }
         return null;
     }

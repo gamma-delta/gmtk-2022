@@ -70,9 +70,9 @@ export const DieMods = {
             modifyRoll(die, roll) {
                 return roll + (inc ? 1 : -1);
             },
-            name: inc ? "Inc-ubus Horn" : "Succ-ubus Tail",
+            name: inc ? "inc-ubus horn" : "succ-ubus tail",
             short: (inc ? "+" : "-") + "1",
-            description: (inc ? "Adds" : "Subtracts") + " one from the roll",
+            description: inc ? "Adds one to the die roll." : "Subtracts one from the die roll.",
             flavor: 'Inc/succ-ubi can detach certain parts of their body in defense, like lizards. Demonologists postulate that concubi would be given to dropping' +
                 ' their "philtrum," but no one\'s managed to get a straight answer out of a demonologist as to what a "philtrum" is.',
             image: inc ? Assets.textures.horn : Assets.textures.tail,
@@ -92,6 +92,8 @@ export interface Item {
         type: "rerollOne"
     } | {
         type: "rerollAll"
+    } | {
+        type: "fighterSecondWind"
     },
     name: string,
     short: string,
@@ -134,6 +136,15 @@ export const Items = {
             description: "Rerolls all your dice.",
             data: { type: "rerollAll" },
             image: Assets.textures.potionLuck2
+        }
+    },
+    fighterSecondWind(): Item {
+        return {
+            name: "second wind",
+            short: "??",
+            description: "Whoopsy, you should never see this!",
+            data: { type: "fighterSecondWind" },
+            image: Assets.textures.ninja,
         }
     },
     toItem(mod: DieMod): Item {

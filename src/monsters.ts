@@ -244,7 +244,7 @@ export const MonstersAndDifficulties: Array<{ monster: () => Monster, difficulty
     { monster: () => Monsters.goblinLord(), difficulty: 3 },
     { monster: () => Monsters.modron(3), difficulty: 3 },
     { monster: () => Monsters.foocubus(true), difficulty: 4 }, { monster: () => Monsters.foocubus(true), difficulty: 4 },
-    { monster: () => Monsters.foocubus(false), difficulty: 4 }, { monster: () => Monsters.foocubus(false), difficulty: 4 }
+    { monster: () => Monsters.foocubus(false), difficulty: 4 }, { monster: () => Monsters.foocubus(false), difficulty: 4 },
     { monster: () => Monsters.modron(4), difficulty: 5 },
     { monster: () => Monsters.gelatinousSquare(), difficulty: 6 }, { monster: () => Monsters.gelatinousSquare(), difficulty: 6 },
     { monster: () => Monsters.modron(5), difficulty: 6 },

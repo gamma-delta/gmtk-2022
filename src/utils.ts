@@ -51,7 +51,7 @@ const fontCanvas = (() => {
     return canvas;
 })();
 const fontCanvasCtx = fontCanvas.getContext("2d")!;
-export function drawString(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, charsWidth: number = 32, color: string = Consts.PENCIL_COLOR) {
+export function drawString(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, charsWidth: number = 32, color: string = Consts.PENCIL_COLOR): number {
     fontCanvasCtx.fillStyle = color;
     fontCanvasCtx.fillRect(0, 0, Consts.CHAR_WIDTH * 16, Consts.CHAR_HEIGHT * 16);
     fontCanvasCtx.globalCompositeOperation = "destination-in";
@@ -70,9 +70,9 @@ export function drawString(ctx: CanvasRenderingContext2D, s: string, x: number, 
                 Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT,
                 x + i * (Consts.CHAR_WIDTH + Consts.KERNING_X), y + lineY * (Consts.CHAR_HEIGHT + Consts.KERNING_Y),
                 Consts.CHAR_WIDTH, Consts.CHAR_HEIGHT);
-
         }
     }
+    return lines.length;
 }
 export function drawStringAlign(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, align: "left" | "center" | "right", color: string = Consts.PENCIL_COLOR) {
     fontCanvasCtx.fillStyle = color;

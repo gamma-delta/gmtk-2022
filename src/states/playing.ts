@@ -2,11 +2,12 @@ import { Assets } from "../assets.js";
 import { Consts } from "../consts.js";
 import { InputState } from "../inputs.js";
 import { DieMod, Item, Items } from "../items.js";
-import { Die, Level, PlayerClasses } from "../model.js";
+import { Die, Level, PlayerClass, PlayerClasses } from "../model.js";
 import { DrawInfo, GameState } from "../states.js";
 import { lethalDamage, nonLethalDamage } from "../strings.js";
 import { drawString, drawStringAlign, pick, randint, splitIntoWordsWithLen, titleCase } from "../utils.js";
 import { Widget } from "../widget.js";
+import { StateCharSelect } from "./character.js";
 import { StateLose } from "./lose.js";
 
 const ART_WIDTH = 240;
@@ -31,6 +32,7 @@ export class StatePlaying implements GameState {
     // Indices of used-up dice
     usedDice: [Die, number][];
     items: Item[];
+    clazz: PlayerClass;
 
     depth: number;
     swapState: GameState | null = null;
@@ -45,28 +47,19 @@ export class StatePlaying implements GameState {
     monsterAnim: { mode: "none" } | { mode: "kill" | "run", startFrame: number }
         = { mode: "none" };
 
-    static start() {
-        const startLog = [
-            ":: Welcome to Roll-Playing Game.",
-            ":: You hold your newspaper hat tight to your head as you step into the dungeon, dust billowing like an ancient book under your footsteps.",
-            ":: Your mentor's advice echoes in your head:",
-            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the treasure chest."',
-            ':: "Go as deep as you can, and don\'t run out of dice!"',
-        ];
-
-        const clazz = PlayerClasses[0];
-
+    static start(clazz: PlayerClass) {
         const level = Level.generateFromDepth(0);
-        return new StatePlaying(level, 0, clazz.dice.slice(), clazz.items.slice(), startLog);
+        return new StatePlaying(level, 0, clazz);
     }
 
-    private constructor(level: Level, depth: number, dice: Die[], items: Item[], log: string[]) {
+    private constructor(level: Level, depth: number, clazz: PlayerClass) {
         this.level = level;
         this.depth = depth;
 
-        this.dice = dice.map(die => [die, die.roll()]);
+        this.dice = clazz.dice.map(die => [die, die.roll()]);
         this.usedDice = [];
-        this.items = items;
+        this.items = clazz.items.slice();
+        this.clazz = clazz;
 
         this.widgets = [];
         for (let used of [false, true]) {
@@ -80,7 +73,13 @@ export class StatePlaying implements GameState {
             }
         }
         this.widgets.push(new WidgetInfoPanel(this, ART_WIDTH, 0, 999999, ART_WIDTH));
-        this.log = log;
+        this.log = [
+            ":: Welcome to Roll-Playing Game.",
+            ":: You hold your newspaper hat tight to your head as you step into the dungeon, dust billowing like an ancient book under your footsteps.",
+            ":: Your mentor's advice echoes in your head:",
+            ':: "Click on a die to fight a monster with what you rolled. If you succeed, you get your die back, to be re-rolled when you reach the treasure chest."',
+            ':: "Go as deep as you can, and don\'t run out of dice!"',
+        ];
 
         this.treasureChest = (Math.random() < 0.5) ? new Die(pick([4, 6, 8, 10, 12, 20])) : null;
     }
@@ -109,7 +108,9 @@ export class StatePlaying implements GameState {
 
     useDie(index: number, used: boolean) {
         if (this.coverMode.type === "applyingItem") {
-            let item = this.items[this.coverMode.itemIdx];
+            const item = (typeof this.coverMode.itemIdx === "number")
+                ? this.items[this.coverMode.itemIdx]
+                : Items.fighterSecondWind();
             if (item.data.type === "mod") {
                 let diePair = (used ? this.usedDice : this.dice)[index];
                 if (diePair === undefined) return;
@@ -151,7 +152,8 @@ export class StatePlaying implements GameState {
                 console.log("Uh oh, tried to apply an item that shouldn't be applied", item);
             }
 
-            this.items.splice(this.coverMode.itemIdx, 1);
+            if (typeof this.coverMode.itemIdx === "number")
+                this.items.splice(this.coverMode.itemIdx, 1);
             this.coverMode = { type: "none" };
         } else if (this.mode() === "monster") {
             if (index >= this.dice.length || this.monsterIdx >= this.level.monsters.length) { return; }
@@ -168,7 +170,7 @@ export class StatePlaying implements GameState {
                 const item = monster.itemDropped();
                 if (item !== null) {
                     this.log.push(`:: The ${monster.name} dropped a ${item.name}!`);
-                    if (this.items.length < StatePlaying.MAX_DIE_COUNT - 1) {
+                    if (this.items.length < StatePlaying.MAX_DIE_COUNT) {
                         this.items.push(item);
                         this.log.push(`:: You pick up the ${item.name}.`);
                     } else {
@@ -202,7 +204,7 @@ export class StatePlaying implements GameState {
                 this.log.push(`:: You had no room for the d${this.treasureChest.sides} in the chest, so you left it there.`);
             }
             this.log.push(`:: You descend the stairs deeper into the dungeon, down to floor ${this.depth + 2}.`);
-            this.swapState = new StatePlaying(nextLevel, this.depth + 1, dice, this.items, this.log);
+            this.swapState = new StateCharSelect();
         } else if (mode === "lost") {
             this.swapState = new StateLose({
                 depth: this.depth,
@@ -488,7 +490,9 @@ class WidgetInfoPanel extends Widget<StatePlaying> {
                 text += `\n\nEquipped with ${die.mod.name}: ${die.mod.description}`;
             }
         } else if (this.state.coverMode.type === "applyingItem") {
-            const item = this.state.items[this.state.coverMode.itemIdx];
+            const item = (typeof this.state.coverMode.itemIdx === "number")
+                ? this.state.items[this.state.coverMode.itemIdx]
+                : Items.fighterSecondWind();
             header = "Applying " + item.name;
             text = "Click on a die to apply the " + item.name + " to.";
         } else {
@@ -530,5 +534,5 @@ type CoverMode = {
     used: boolean,
 } | {
     type: "applyingItem",
-    itemIdx: number,
+    itemIdx: number | "fighterSecondWind",
 };

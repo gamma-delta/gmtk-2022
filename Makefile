@@ -9,7 +9,7 @@ out/main.js : $(wildcard src/*) $(wildcard src/states/*)
 out/assets/.makeflag : $(wildcard assets/audio/* assets/textures/*)
 	rm --recursive --force out/assets
 	mkdir -p out/assets
-	cp -r assets/* out/assets
+	cp -r assets/** out/assets
 	touch out/assets/.makeflag
 
 serve : build

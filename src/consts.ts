@@ -49,7 +49,7 @@ export function initAudio() {
     GameAudio.trackBgMusic = GameAudio.ctx.createMediaElementSource(GameAudio.bgMusic);
     // Make it a bit quieter
     GameAudio.bgGainNode = GameAudio.ctx.createGain();
-    GameAudio.bgGainNode.gain.value = 0.4;
+    GameAudio.bgGainNode.gain.value = 0.2;
     GameAudio
         .trackBgMusic.connect(GameAudio.bgGainNode)
         .connect(GameAudio.ctx.destination);

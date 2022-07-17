@@ -35,22 +35,25 @@ export class Die {
 
     draw(x: number, y: number, roll: number, ctx: CanvasRenderingContext2D) {
         let sideIdx;
-        if (this.sides === 4) {
+        if (this.sides === 2) {
             sideIdx = 0;
-        } else if (this.sides === 6) {
+        } else if (this.sides === 4) {
             sideIdx = 1;
-        } else if (this.sides === 8) {
+        } else if (this.sides === 6) {
             sideIdx = 2;
-        } else if (this.sides === 10) {
+        } else if (this.sides === 8) {
             sideIdx = 3;
-        } else if (this.sides === 12) {
+        } else if (this.sides === 10) {
             sideIdx = 4;
-        } else {
+        } else if (this.sides === 12) {
             sideIdx = 5;
+        } else {
+            sideIdx = 6;
         }
         ctx.drawImage(Assets.textures.diceAtlas, sideIdx * Die.TEX_WIDTH, 0, Die.TEX_WIDTH, Die.TEX_HEIGHT, x, y, Die.TEX_WIDTH, Die.TEX_HEIGHT);
 
         let color = [
+            "#222",
             "#222",
             Consts.BG_COLOR,
             "#222",
@@ -59,7 +62,7 @@ export class Die {
             Consts.BG_COLOR,
         ][sideIdx];
         let dy = [
-            3, 0, -3, 0, 1, 3,
+            0, 3, 0, -3, 0, 1, 3,
         ][sideIdx];
         dieCanvasCtx.fillStyle = color;
         dieCanvasCtx.fillRect(0, 0, 10 * dieNumberWidth, dieNumberHeight);
@@ -102,7 +105,7 @@ export class Level {
             monsterManual.sort((a, b) => b.difficulty - a.difficulty + Math.random() - 0.5);
 
             let difficultyRemaining = depth * 2 + 4;
-            let len = Math.max(3, Math.min(9, randint(Math.floor(depth / 2), depth * 2)));
+            let len = Math.max(3, Math.min(8, randint(3, depth * 2)));
             let tries = 100;
             while (monsters.length < len && (tries--) > 0) {
                 let diff = randint(Math.ceil(difficultyRemaining / 3), difficultyRemaining + 1);
@@ -128,9 +131,11 @@ export class Level {
 }
 
 // Defines your starting inventory
+export type PlayerClassType = "Fighter" | "Cleric" | "Rogue" | "Wizard";
 export interface PlayerClass {
-    name: string,
+    type: PlayerClassType,
     description: string,
+    powerDesc: string,
     difficulty: number,
     dice: Die[],
     items: Item[],
@@ -138,8 +143,9 @@ export interface PlayerClass {
 
 export const PlayerClasses: PlayerClass[] = [
     {
-        name: "Fighter",
-        description: "",
+        type: "Fighter",
+        description: "A brave adventurer with a trusty cardboard sword.",
+        powerDesc: "Second Wind: Re-roll and restore one of your dice once per floor.",
         difficulty: 1,
         dice: [new Die(4), new Die(6), new Die(6), new Die(6), new Die(8)],
         items: [
@@ -149,9 +155,10 @@ export const PlayerClasses: PlayerClass[] = [
         ]
     },
     {
-        name: "Cleric",
-        description: "",
-        difficulty: 1,
+        type: "Cleric",
+        description: "A devotee of one of the many deities that sponsor dungeon-delving.",
+        powerDesc: "Rebuke: Immediately defeat a demon or pirate once per floor.",
+        difficulty: 2,
         dice: [new Die(4), new Die(4), new Die(4), new Die(4), new Die(4)],
         items: [
             Items.toItem(DieMods.nloon(2, "gold")),
@@ -159,5 +166,28 @@ export const PlayerClasses: PlayerClass[] = [
             Items.toItem(DieMods.modronCore(5)),
             Items.greaterHealingPotion(),
         ]
+    },
+    {
+        type: "Rogue",
+        description: "A swindler with a clever smirk and cleverer fingers,",
+        powerDesc: "Cheat: The first time you would lose a die on a floor, you get it back instead.",
+        difficulty: 3,
+        dice: [new Die(2), new Die(2), new Die(2), new Die(4), new Die(6)],
+        items: [
+            Items.toItem(DieMods.demonPart(true)),
+            Items.toItem(DieMods.demonPart(false)),
+        ]
+    },
+    {
+        type: "Wizard",
+        description: "A scholar of the arcane spelunking for more hands-on research.",
+        powerDesc: "Teleport: Exchange your used and ready dice once per floor.",
+        difficulty: 4,
+        dice: [new Die(10), new Die(10), new Die(12), new Die(20),
+        (function () { const die = new Die(20); die.mod = DieMods.nloon(3, "silver"); return die; })()],
+        items: [
+            Items.healingPotion(),
+            Items.luckPotion(),
+        ]
     }
-]
+];
